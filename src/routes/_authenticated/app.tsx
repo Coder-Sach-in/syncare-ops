@@ -6,10 +6,14 @@ import {
   LogIn, LogOut, CheckCircle2, XCircle, Pill, Activity, PlusCircle,
   AlertTriangle, ArrowLeft, FlaskConical, Building2, ShieldCheck,
   KeyRound, Send, Copy, Check, ClipboardList, Pencil, Trash2, X,
+  Sparkles, PackageX, ArrowLeftRight, CalendarClock, TrendingUp, Loader2, RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { adminResetPassword, adminCreateCenter, adminListStaff } from "@/lib/admin.functions";
+import { runAiAnalysis, listAiInsights } from "@/lib/ai-insights.functions";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/app")({
   head: () => ({
