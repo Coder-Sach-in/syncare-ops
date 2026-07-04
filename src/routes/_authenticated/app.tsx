@@ -262,9 +262,9 @@ function NameWithActions({
 /* ================================================================
    MEDICINE
    ================================================================ */
-function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest }: {
+function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest, hideBack }: {
   meds: Med[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null;
-  onRequest: () => void;
+  onRequest: () => void; hideBack?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
