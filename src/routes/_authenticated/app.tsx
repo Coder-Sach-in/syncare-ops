@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { adminResetPassword, adminCreateCenter, adminListStaff } from "@/lib/admin.functions";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/app")({
   head: () => ({
@@ -377,6 +378,14 @@ function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest }: {
 
 /* ---------- Voice ---------- */
 type SR = any;
+const NUMBER_WORDS: Record<string, number> = {
+  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+  eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13,
+  fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18,
+  nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60,
+  seventy: 70, eighty: 80, ninety: 90, hundred: 100,
+};
+
 function VoiceStock({ meds, refresh }: { meds: Med[]; refresh: () => void }) {
   const [listening, setListening] = useState(false);
   const [text, setText] = useState("");
@@ -384,50 +393,110 @@ function VoiceStock({ meds, refresh }: { meds: Med[]; refresh: () => void }) {
   const [supported, setSupported] = useState(true);
   const recRef = useRef<SR | null>(null);
   const medsRef = useRef(meds);
+  const processedRef = useRef(false);
   useEffect(() => { medsRef.current = meds; }, [meds]);
-  useEffect(() => {
-    const SRC = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SRC) { setSupported(false); return; }
-    const rec = new SRC(); rec.lang = "en-US"; rec.interimResults = true; rec.continuous = false;
-    rec.onresult = (e: any) => {
-      const t = Array.from(e.results).map((r: any) => r[0].transcript).join(" ");
-      setText(t); if (e.results[e.results.length - 1].isFinal) parseCommand(t);
-    };
-    rec.onend = () => setListening(false);
-    rec.onerror = () => { setListening(false); setStatus({ ok: false, msg: "Voice error — try again." }); };
-    recRef.current = rec;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const numberWords: Record<string, number> = { zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,fifteen:15,twenty:20,thirty:30,fifty:50,hundred:100 };
+
   async function parseCommand(raw: string) {
-    const t = raw.toLowerCase().trim();
+    const t = raw.toLowerCase().trim().replace(/[.,!?]/g, "");
+    if (!t) { setStatus({ ok: false, msg: "Could not understand. Please try again." }); return; }
     const med = medsRef.current.find((m) => t.includes(m.name.toLowerCase()));
-    if (!med) { setStatus({ ok: false, msg: "Medicine not recognized." }); return; }
-    const sign = /(minus|subtract|remove|less)/.test(t) ? -1 : /(plus|add|increase|more)/.test(t) ? 1 : 0;
+    if (!med) { setStatus({ ok: false, msg: "Medicine not found." }); return; }
+    const sign = /\b(minus|subtract|remove|less|decrease)\b/.test(t) ? -1
+      : /\b(plus|add|increase|more)\b/.test(t) ? 1 : 0;
     if (!sign) { setStatus({ ok: false, msg: "Say 'plus' or 'minus' with a number." }); return; }
-    const numMatch = t.match(/\d+/);
-    let n = numMatch ? parseInt(numMatch[0], 10) : NaN;
-    if (isNaN(n)) { for (const w of Object.keys(numberWords)) if (t.includes(w)) { n = numberWords[w]; break; } }
-    if (isNaN(n)) { setStatus({ ok: false, msg: "Number not recognized." }); return; }
+    let n = NaN;
+    const digitMatch = t.match(/\d+/);
+    if (digitMatch) n = parseInt(digitMatch[0], 10);
+    if (isNaN(n)) {
+      for (const w of Object.keys(NUMBER_WORDS)) {
+        const re = new RegExp(`\\b${w}\\b`);
+        if (re.test(t)) { n = NUMBER_WORDS[w]; break; }
+      }
+    }
+    if (isNaN(n)) { setStatus({ ok: false, msg: "Could not understand. Please try again." }); return; }
     const next = Math.max(0, med.stock + sign * n);
-    await supabase.from("stock").update({ stock: next }).eq("id", med.id);
+    const { error } = await supabase.from("stock").update({ stock: next }).eq("id", med.id);
+    if (error) { setStatus({ ok: false, msg: "Failed to update stock." }); return; }
     refresh();
+    toast.success("Stock updated successfully.");
     setStatus({ ok: true, msg: `${med.name} ${sign > 0 ? "+" : "−"}${n} — Stock updated successfully` });
   }
-  const toggle = () => {
-    if (!supported || !recRef.current) return;
-    if (listening) { recRef.current.stop(); return; }
-    setText(""); setStatus(null); setListening(true);
-    try { recRef.current.start(); } catch { /* ignore */ }
+
+  const toggle = async () => {
+    if (typeof window === "undefined") return;
+    const SRC = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SRC) { setSupported(false); setStatus({ ok: false, msg: "Voice recognition is not supported in this browser." }); return; }
+    if (!window.isSecureContext) { setStatus({ ok: false, msg: "Voice requires a secure (HTTPS) context." }); return; }
+    if (listening) { try { recRef.current?.stop(); } catch { /* ignore */ } return; }
+
+    // Proactively request mic permission (surfaces clear error if blocked)
+    try {
+      if (navigator.mediaDevices?.getUserMedia) {
+        const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+        s.getTracks().forEach((t) => t.stop());
+      }
+    } catch (e: any) {
+      const name = e?.name || "";
+      const msg = name === "NotAllowedError" || name === "SecurityError"
+        ? "Microphone permission denied. Allow mic access and try again."
+        : name === "NotFoundError"
+          ? "No microphone found."
+          : "Microphone unavailable. Check permissions and try again.";
+      setStatus({ ok: false, msg });
+      return;
+    }
+
+    const rec: SR = new SRC();
+    rec.lang = "en-US";
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = 1;
+    processedRef.current = false;
+    rec.onstart = () => { setListening(true); setStatus(null); setText(""); };
+    rec.onresult = (e: any) => {
+      const t = Array.from(e.results).map((r: any) => r[0].transcript).join(" ");
+      setText(t);
+      const last = e.results[e.results.length - 1];
+      if (last.isFinal && !processedRef.current) {
+        processedRef.current = true;
+        parseCommand(t);
+        try { rec.stop(); } catch { /* ignore */ }
+      }
+    };
+    rec.onerror = (e: any) => {
+      setListening(false);
+      const err = e?.error || "";
+      const msg =
+        err === "not-allowed" || err === "service-not-allowed"
+          ? "Microphone permission denied. Allow mic access and try again."
+          : err === "no-speech"
+            ? "No speech detected. Please try again."
+            : err === "audio-capture"
+              ? "No microphone detected."
+              : err === "network"
+                ? "Network error during voice recognition."
+                : err === "aborted"
+                  ? ""
+                  : "Could not understand. Please try again.";
+      if (msg) setStatus({ ok: false, msg });
+    };
+    rec.onend = () => { setListening(false); };
+    recRef.current = rec;
+    try { rec.start(); }
+    catch (err: any) {
+      setListening(false);
+      setStatus({ ok: false, msg: "Could not start voice recognition. Try again." });
+    }
   };
+
   return (
     <div className="flex flex-col items-center text-center">
-      <button onClick={toggle} disabled={!supported}
+      <button onClick={toggle} disabled={!supported || listening}
         className={`relative h-24 w-24 md:h-28 md:w-28 rounded-full grid place-items-center transition-all active:scale-95 ${listening ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground hover:brightness-110"} shadow-[var(--shadow-elevated)] disabled:opacity-50 disabled:cursor-not-allowed`}>
         {listening && <span className="absolute inset-0 rounded-full bg-destructive opacity-40 animate-ping" />}
         {listening ? <MicOff className="h-10 w-10 relative" /> : <Mic className="h-10 w-10 relative" />}
       </button>
-      <div className="mt-3 text-sm font-semibold text-primary">{listening ? "Listening..." : supported ? "Tap the mic and speak" : "Voice not supported in this browser"}</div>
+      <div className="mt-3 text-sm font-semibold text-primary">{listening ? "Listening..." : supported ? "Tap the mic and speak" : "Voice recognition is not supported in this browser."}</div>
       <div className="mt-2 w-full max-w-lg rounded-xl bg-white border border-border px-4 py-3 min-h-[48px] text-sm text-foreground">
         {text || <span className="text-muted-foreground">Say e.g. "Paracetamol plus five", "ORS minus two"</span>}
       </div>
