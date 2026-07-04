@@ -102,8 +102,9 @@ export const runAiAnalysis = createServerFn({ method: "POST" })
 
     const payload = {
       generated_at: new Date().toISOString(),
+      today: startOfToday.toISOString().slice(0, 10),
       notes:
-        "No explicit medicine expiry column exists in the stock table — infer only if a strong signal exists, otherwise skip expiry insights. Use ONLY the footfall_weekly summary for footfall insights (real patient counts). Skip footfall for any center that lacks data in both weeks.",
+        "Each stock row has an optional 'expiry_date' (ISO YYYY-MM-DD, may be null). Compare it to 'today' to compute days remaining and drive expiry insights per the rules above. Use ONLY the footfall_weekly summary for footfall insights (real patient counts). Skip footfall for any center that lacks data in both weeks.",
       centers: centersForModel,
       stock: withRef(stockRes.data ?? []),
       attendance: withRef(attRes.data ?? []),
