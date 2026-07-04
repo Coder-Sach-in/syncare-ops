@@ -266,6 +266,72 @@ function NameWithActions({
 /* ================================================================
    MEDICINE
    ================================================================ */
+function QtyStepper({
+  current, onApply, layout = "row", addLabel = "Add stock", subLabel = "Remove stock",
+}: {
+  current: number;
+  onApply: (delta: number) => Promise<void> | void;
+  layout?: "row" | "col";
+  addLabel?: string;
+  subLabel?: string;
+}) {
+  const [mode, setMode] = useState<null | "add" | "sub">(null);
+  const [val, setVal] = useState("1");
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const open = (m: "add" | "sub") => { setMode(m); setVal("1"); setErr(null); };
+  const cancel = () => { setMode(null); setErr(null); };
+  const confirm = async () => {
+    const n = parseInt(val, 10);
+    if (isNaN(n) || n <= 0) { setErr("Enter a number greater than 0"); return; }
+    if (mode === "sub" && current - n < 0) { setErr(`Cannot go below 0 (available: ${current})`); return; }
+    setBusy(true);
+    try { await onApply(mode === "add" ? n : -n); setMode(null); } finally { setBusy(false); }
+  };
+
+  const isCol = layout === "col";
+  const wrapCls = isCol ? "flex flex-col gap-1.5" : "grid grid-cols-2 gap-2";
+  const minusCls = isCol
+    ? "h-9 w-9 rounded-lg bg-destructive-soft text-destructive grid place-items-center hover:bg-destructive hover:text-destructive-foreground transition"
+    : "h-12 rounded-xl bg-destructive-soft text-destructive font-bold grid place-items-center hover:bg-destructive hover:text-destructive-foreground active:scale-95 transition";
+  const plusCls = isCol
+    ? "h-9 w-9 rounded-lg bg-accent-soft text-accent grid place-items-center hover:bg-accent hover:text-accent-foreground transition"
+    : "h-12 rounded-xl bg-accent-soft text-accent font-bold grid place-items-center hover:bg-accent hover:text-accent-foreground active:scale-95 transition";
+  const iconSize = isCol ? "h-4 w-4" : "h-6 w-6";
+
+  const plusBtn = <button key="p" aria-label={addLabel} title={addLabel} onClick={() => open("add")} className={plusCls}><Plus className={iconSize} /></button>;
+  const minusBtn = <button key="m" aria-label={subLabel} title={subLabel} onClick={() => open("sub")} className={minusCls}><Minus className={iconSize} /></button>;
+
+  return (
+    <div className="space-y-2 w-full">
+      <div className={wrapCls}>{isCol ? [plusBtn, minusBtn] : [minusBtn, plusBtn]}</div>
+      {mode && (
+        <div className={`rounded-xl border p-2 space-y-1.5 ${mode === "add" ? "border-accent/40 bg-accent-soft/50" : "border-destructive/40 bg-destructive-soft/50"}`}>
+          <div className="text-[11px] font-semibold flex items-center gap-1 uppercase tracking-wide">
+            {mode === "add" ? <Plus className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+            {mode === "add" ? addLabel : subLabel}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="number" min={1} inputMode="numeric" value={val} autoFocus
+              onChange={(e) => { setVal(e.target.value); setErr(null); }}
+              onFocus={(e) => e.currentTarget.select()}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); confirm(); } if (e.key === "Escape") cancel(); }}
+              className="h-9 flex-1 min-w-0 px-2 rounded-lg border border-border bg-white text-sm"
+            />
+            <button onClick={confirm} disabled={busy}
+              className={`h-9 px-2.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 ${mode === "add" ? "bg-accent" : "bg-destructive"}`}>
+              {busy ? "…" : "Confirm"}
+            </button>
+            <button onClick={cancel} className="h-9 px-2 rounded-lg text-xs font-semibold text-muted-foreground hover:bg-muted">Cancel</button>
+          </div>
+          {err && <div className="text-xs font-semibold text-destructive">{err}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest, hideBack, hideBanner }: {
   meds: Med[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null;
   onRequest: () => void; hideBack?: boolean; hideBanner?: boolean;
@@ -357,9 +423,9 @@ function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest, hid
                         <div className="text-2xl font-bold tabular-nums">{m.stock}</div>
                       </div>
                       {canEdit && (
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          <button onClick={() => change(m.id, m.stock, -1)} className="h-12 rounded-xl bg-destructive-soft text-destructive font-bold grid place-items-center hover:bg-destructive hover:text-destructive-foreground active:scale-95 transition"><Minus className="h-6 w-6" /></button>
-                          <button onClick={() => change(m.id, m.stock, 1)} className="h-12 rounded-xl bg-accent-soft text-accent font-bold grid place-items-center hover:bg-accent hover:text-accent-foreground active:scale-95 transition"><Plus className="h-6 w-6" /></button>
+                        <div className="mt-4">
+                          <QtyStepper current={m.stock} layout="row" addLabel="Add stock" subLabel="Dispense / remove"
+                            onApply={(delta) => change(m.id, m.stock, delta)} />
                         </div>
                       )}
                     </div>
@@ -709,12 +775,12 @@ function BedsView({ beds, refresh, onBack, canEdit, centerId, hideBack, hideBann
                         onDelete={async () => { await supabase.from("beds").delete().eq("id", b.id); refresh(); }}
                       />
                     </div>
-                    <div className="mt-3 flex items-center justify-between">
+                    <div className="mt-3 flex items-start justify-between gap-2">
                       <div><div className="text-3xl font-bold tabular-nums">{b.count}</div><div className="text-xs text-muted-foreground">available now</div></div>
                       {canEdit && (
-                        <div className="flex flex-col gap-1.5">
-                          <button onClick={() => change(b.id, b.count, 1)} className="h-9 w-9 rounded-lg bg-accent-soft text-accent grid place-items-center hover:bg-accent hover:text-accent-foreground transition"><Plus className="h-4 w-4" /></button>
-                          <button onClick={() => change(b.id, b.count, -1)} className="h-9 w-9 rounded-lg bg-destructive-soft text-destructive grid place-items-center hover:bg-destructive hover:text-destructive-foreground transition"><Minus className="h-4 w-4" /></button>
+                        <div className="flex-1 max-w-[180px]">
+                          <QtyStepper current={b.count} layout="col" addLabel="Add beds" subLabel="Remove beds"
+                            onApply={(delta) => change(b.id, b.count, delta)} />
                         </div>
                       )}
                     </div>
