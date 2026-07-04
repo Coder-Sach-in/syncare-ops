@@ -14,14 +14,20 @@ async function assertAdmin(supabase: any, userId: string) {
   if (error || !data) throw new Error("Forbidden: district admin only");
 }
 
-// Reset a center staff user's password (returns new temp password)
+// Reset a center staff user's password. If customPassword provided (>=6 chars), use it; else generate.
 export const adminResetPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { targetUserId: string }) => d)
+  .inputValidator((d: { targetUserId: string; customPassword?: string }) => d)
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const newPassword = tempPassword();
+    let newPassword: string;
+    if (data.customPassword && data.customPassword.length > 0) {
+      if (data.customPassword.length < 6) throw new Error("Password must be at least 6 characters");
+      newPassword = data.customPassword;
+    } else {
+      newPassword = tempPassword();
+    }
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.targetUserId, { password: newPassword });
     if (error) throw new Error(error.message);
     return { newPassword };
@@ -30,7 +36,7 @@ export const adminResetPassword = createServerFn({ method: "POST" })
 // Create a new center + linked staff account
 export const adminCreateCenter = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { centerName: string; centerType: "PHC" | "CHC"; email: string }) => d)
+  .inputValidator((d: { centerName: string; centerType: "PHC" | "CHC"; email: string; customPassword?: string }) => d)
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -42,7 +48,16 @@ export const adminCreateCenter = createServerFn({ method: "POST" })
       .single();
     if (cErr) throw new Error(cErr.message);
 
-    const password = tempPassword();
+    let password: string;
+    if (data.customPassword && data.customPassword.length > 0) {
+      if (data.customPassword.length < 6) {
+        await supabaseAdmin.from("centers").delete().eq("id", center.id);
+        throw new Error("Password must be at least 6 characters");
+      }
+      password = data.customPassword;
+    } else {
+      password = tempPassword();
+    }
     const { data: user, error: uErr } = await supabaseAdmin.auth.admin.createUser({
       email: data.email.trim().toLowerCase(),
       password,
