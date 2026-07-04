@@ -1398,6 +1398,8 @@ function AdminDashboard({
 
   return (
     <div className="space-y-6">
+      <AiInsightsPanel centers={centers} />
+
       {redCenters.length > 0 && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive-soft text-destructive px-4 py-3 flex items-start gap-3 shadow-[var(--shadow-card)]">
           <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
