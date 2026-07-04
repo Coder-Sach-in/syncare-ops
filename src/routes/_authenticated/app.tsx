@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Package, Users, BedDouble, TestTube, Settings,
   LogIn, LogOut, CheckCircle2, XCircle, Pill, Activity, PlusCircle,
   AlertTriangle, ArrowLeft, FlaskConical, Building2, ShieldCheck,
-  KeyRound, Send, Copy, Check, ClipboardList,
+  KeyRound, Send, Copy, Check, ClipboardList, Pencil, Trash2, X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { adminResetPassword, adminCreateCenter, adminListStaff } from "@/lib/admin.functions";
