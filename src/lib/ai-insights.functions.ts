@@ -54,7 +54,7 @@ export const runAiAnalysis = createServerFn({ method: "POST" })
     // Gather data
     const [centersRes, stockRes, attRes, bedsRes, testsRes, pathRes, reqsRes, footRes] = await Promise.all([
       supabaseAdmin.from("centers").select("id, center_name, center_type"),
-      supabaseAdmin.from("stock").select("id, center_id, name, stock, created_at, updated_at"),
+      supabaseAdmin.from("stock").select("id, center_id, name, stock, expiry_date, created_at, updated_at"),
       supabaseAdmin.from("attendance").select("id, center_id, name, role, status, last_marked_at"),
       supabaseAdmin.from("beds").select("id, center_id, name, count, available"),
       supabaseAdmin.from("tests").select("id, center_id, name, available"),
