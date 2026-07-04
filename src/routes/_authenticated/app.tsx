@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Bell, Hospital, Wifi, Mic, MicOff, Minus, Plus, Search,
   LayoutDashboard, Package, Users, BedDouble, TestTube, Settings,
@@ -973,9 +973,12 @@ function ManageCentersView({ centers, refreshCenters, onBack }: { centers: Cente
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState<"PHC" | "CHC">("PHC");
   const [newEmail, setNewEmail] = useState("");
+  const [newPw, setNewPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "err"; msg: string; pw?: string } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [resetTarget, setResetTarget] = useState<{ uid: string; label: string } | null>(null);
+  const [resetPw, setResetPw] = useState("");
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -984,20 +987,30 @@ function ManageCentersView({ centers, refreshCenters, onBack }: { centers: Cente
   }, []);
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
-  const reset = async (uid: string, label: string) => {
+  const doReset = async (custom: boolean) => {
+    if (!resetTarget) return;
+    if (custom && resetPw.length < 6) { setNotice({ kind: "err", msg: "Password must be at least 6 characters" }); return; }
     setBusy(true); setNotice(null);
     try {
-      const res = await adminResetPassword({ data: { targetUserId: uid } });
-      setNotice({ kind: "ok", msg: `New temporary password for ${label}`, pw: res.newPassword });
+      const res = await adminResetPassword({ data: { targetUserId: resetTarget.uid, customPassword: custom ? resetPw : undefined } });
+      setNotice({ kind: "ok", msg: `New password for ${resetTarget.label}`, pw: res.newPassword });
+      setResetTarget(null); setResetPw("");
     } catch (e: any) { setNotice({ kind: "err", msg: e.message }); }
     setBusy(false);
   };
+  const genRandomLocal = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    let out = ""; for (let i = 0; i < 10; i++) out += chars[Math.floor(Math.random() * chars.length)];
+    return out + "!" + Math.floor(Math.random() * 90 + 10);
+  };
   const addCenter = async (e: React.FormEvent) => {
-    e.preventDefault(); setBusy(true); setNotice(null);
+    e.preventDefault();
+    if (newPw && newPw.length < 6) { setNotice({ kind: "err", msg: "Password must be at least 6 characters" }); return; }
+    setBusy(true); setNotice(null);
     try {
-      const res = await adminCreateCenter({ data: { centerName: newName.trim(), centerType: newType, email: newEmail.trim() } });
+      const res = await adminCreateCenter({ data: { centerName: newName.trim(), centerType: newType, email: newEmail.trim(), customPassword: newPw || undefined } });
       setNotice({ kind: "ok", msg: `Center "${res.center.center_name}" created · login: ${res.email}`, pw: res.password });
-      setNewName(""); setNewEmail(""); refreshCenters(); loadUsers();
+      setNewName(""); setNewEmail(""); setNewPw(""); refreshCenters(); loadUsers();
     } catch (e: any) { setNotice({ kind: "err", msg: e.message }); }
     setBusy(false);
   };
@@ -1033,6 +1046,15 @@ function ManageCentersView({ centers, refreshCenters, onBack }: { centers: Cente
               </select>
               <input required type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="staff email"
                 className="h-11 px-3 rounded-xl border border-border bg-white text-sm" />
+              <div className="md:col-span-4 flex gap-2">
+                <input value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="Custom password (leave blank to auto-generate, min 6 chars)"
+                  minLength={0}
+                  className="h-11 px-3 rounded-xl border border-border bg-white text-sm flex-1 font-mono" />
+                <button type="button" onClick={() => setNewPw(genRandomLocal())}
+                  className="h-11 px-3 rounded-xl border border-border bg-white text-xs font-semibold hover:bg-muted transition">
+                  Generate random
+                </button>
+              </div>
               <button disabled={busy} className="md:col-span-4 h-11 rounded-xl bg-primary text-primary-foreground font-semibold inline-flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition">
                 <PlusCircle className="h-5 w-5" /> Create center & staff login
               </button>
@@ -1049,20 +1071,46 @@ function ManageCentersView({ centers, refreshCenters, onBack }: { centers: Cente
                   <tbody>
                     {centers.map((c) => {
                       const u = staff.find((s) => s.center_id === c.id);
+                      const isTarget = resetTarget?.uid === u?.id;
                       return (
-                        <tr key={c.id} className="border-t border-border">
-                          <td className="py-3 pr-4 font-semibold">{c.center_name}</td>
-                          <td className="py-3 pr-4"><span className="text-xs font-bold px-2 py-1 rounded-full bg-primary-soft text-primary">{c.center_type}</span></td>
-                          <td className="py-3 pr-4 font-mono text-xs">{u?.email ?? "—"}</td>
-                          <td className="py-3 pr-4">
-                            {u ? (
-                              <button disabled={busy} onClick={() => reset(u.id, c.center_name)}
-                                className="h-9 px-3 rounded-lg bg-destructive-soft text-destructive font-semibold text-xs inline-flex items-center gap-1.5 hover:bg-destructive hover:text-destructive-foreground transition disabled:opacity-60">
-                                <KeyRound className="h-3.5 w-3.5" /> Reset password
-                              </button>
-                            ) : <span className="text-xs text-muted-foreground">no user</span>}
-                          </td>
-                        </tr>
+                        <React.Fragment key={c.id}>
+                          <tr className="border-t border-border">
+                            <td className="py-3 pr-4 font-semibold">{c.center_name}</td>
+                            <td className="py-3 pr-4"><span className="text-xs font-bold px-2 py-1 rounded-full bg-primary-soft text-primary">{c.center_type}</span></td>
+                            <td className="py-3 pr-4 font-mono text-xs">{u?.email ?? "—"}</td>
+                            <td className="py-3 pr-4">
+                              {u ? (
+                                <button disabled={busy} onClick={() => { setResetTarget(isTarget ? null : { uid: u.id, label: c.center_name }); setResetPw(""); }}
+                                  className="h-9 px-3 rounded-lg bg-destructive-soft text-destructive font-semibold text-xs inline-flex items-center gap-1.5 hover:bg-destructive hover:text-destructive-foreground transition disabled:opacity-60">
+                                  <KeyRound className="h-3.5 w-3.5" /> Reset password
+                                </button>
+                              ) : <span className="text-xs text-muted-foreground">no user</span>}
+                            </td>
+                          </tr>
+                          {isTarget && (
+                            <tr className="border-t border-border bg-muted/30">
+                              <td colSpan={4} className="py-3 pr-4">
+                                <div className="flex flex-col md:flex-row gap-2 items-stretch md:items-center">
+                                  <div className="text-xs font-semibold text-muted-foreground md:min-w-[140px]">Reset password for {c.center_name}:</div>
+                                  <input value={resetPw} onChange={(e) => setResetPw(e.target.value)} placeholder="Custom password (min 6 chars)"
+                                    className="h-10 px-3 rounded-lg border border-border bg-white text-sm flex-1 font-mono" />
+                                  <button disabled={busy || resetPw.length < 6} onClick={() => doReset(true)}
+                                    className="h-10 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-50">
+                                    Set custom
+                                  </button>
+                                  <button disabled={busy} onClick={() => doReset(false)}
+                                    className="h-10 px-3 rounded-lg bg-accent text-accent-foreground text-xs font-semibold disabled:opacity-50">
+                                    Generate random
+                                  </button>
+                                  <button type="button" onClick={() => { setResetTarget(null); setResetPw(""); }}
+                                    className="h-10 px-3 rounded-lg border border-border bg-white text-xs font-semibold">
+                                    Cancel
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
@@ -1075,6 +1123,7 @@ function ManageCentersView({ centers, refreshCenters, onBack }: { centers: Cente
     </div>
   );
 }
+
 
 /* ================================================================
    REQUISITION TAB
