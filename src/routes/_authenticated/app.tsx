@@ -1734,11 +1734,11 @@ function AiInsightsPanel({ centers, onRequisitionCreated }: { centers: Center[];
 }
 
 function AdminDashboard({
-  centers, meds, staff, beds, tests, path, reqs, onDrill, onOpenReqs,
+  centers, meds, staff, beds, tests, path, reqs, onDrill, onOpenReqs, onRefresh,
 
 }: {
   centers: Center[]; meds: Med[]; staff: StaffRow[]; beds: BedRow[]; tests: TestRow[]; path: PathRow[]; reqs: ReqRow[];
-  onDrill: (centerId: string) => void; onOpenReqs: () => void;
+  onDrill: (centerId: string) => void; onOpenReqs: () => void; onRefresh?: () => void;
 }) {
   const withStatus = centers.map((c) => ({
     center: c,
