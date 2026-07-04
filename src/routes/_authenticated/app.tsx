@@ -831,7 +831,7 @@ function PathologyView({ rows, refresh, onBack, canEdit, centerId, hideBack }: {
 
   return (
     <div className="space-y-5">
-      <BackBar label="Pathology Lab" onBack={onBack} />
+      {!hideBack && <BackBar label="Pathology Lab" onBack={onBack} />}
       <Section id="pathology" title="Pathology Lab" subtitle="Sample collection & report turnaround" icon={FlaskConical}>
         <div className="space-y-5">
           {!canEdit && <ReadOnlyBanner />}
