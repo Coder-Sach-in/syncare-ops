@@ -1419,13 +1419,19 @@ function AdminDashboard({
                   </span>
                 </div>
                 <div className={`mt-3 text-xs font-semibold px-2.5 py-1.5 rounded-lg ${t.chip} line-clamp-2`}>{status.reason}</div>
-                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Efficiency</span>
-                  <span className="font-bold text-foreground tabular-nums">{eff.total}%</span>
-                </div>
-                <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full bg-primary" style={{ width: `${eff.total}%` }} />
-                </div>
+                {eff.hasData ? (
+                  <>
+                    <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Efficiency</span>
+                      <span className="font-bold text-foreground tabular-nums">{eff.total}%</span>
+                    </div>
+                    <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-primary" style={{ width: `${eff.total}%` }} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-3 text-xs text-muted-foreground italic">No data yet</div>
+                )}
                 <div className="mt-3 text-[11px] font-semibold text-primary">Open drill-down →</div>
               </button>
             );
