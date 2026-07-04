@@ -262,9 +262,9 @@ function NameWithActions({
 /* ================================================================
    MEDICINE
    ================================================================ */
-function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest, hideBack }: {
+function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest, hideBack, hideBanner }: {
   meds: Med[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null;
-  onRequest: () => void; hideBack?: boolean;
+  onRequest: () => void; hideBack?: boolean; hideBanner?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
@@ -301,7 +301,7 @@ function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest, hid
           </button>
         ) : null}>
         <div className="space-y-5">
-          {!canEdit && <ReadOnlyBanner />}
+          {!canEdit && !hideBanner && <ReadOnlyBanner />}
           <SubCard title={`Low Stock Alerts (${lowMeds.length})`} tone="alert" icon={AlertTriangle}>
             {lowMeds.length === 0 ? <p className="text-sm text-muted-foreground">All medicines are healthy. No refill needed right now.</p> : (
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -538,7 +538,7 @@ function VoiceStock({ meds, refresh }: { meds: Med[]; refresh: () => void }) {
 /* ================================================================
    ATTENDANCE
    ================================================================ */
-function AttendanceView({ staff, refresh, onBack, canEdit, centerId, hideBack }: { staff: StaffRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean }) {
+function AttendanceView({ staff, refresh, onBack, canEdit, centerId, hideBack, hideBanner }: { staff: StaffRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean; hideBanner?: boolean }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
@@ -566,7 +566,7 @@ function AttendanceView({ staff, refresh, onBack, canEdit, centerId, hideBack }:
       {!hideBack && <BackBar label="Staff Attendance" onBack={onBack} />}
       <Section id="attendance" title="Doctor & Nurse Attendance" subtitle="Alerts first, then mark or add staff" icon={Users}>
         <div className="space-y-5">
-          {!canEdit && <ReadOnlyBanner />}
+          {!canEdit && !hideBanner && <ReadOnlyBanner />}
           <SubCard title={`Attention Needed (${notMarked.length + checkedOut.length})`} tone="alert" icon={AlertTriangle}>
             {notMarked.length + checkedOut.length === 0 ? <p className="text-sm text-muted-foreground">All staff are marked present. Great!</p> : (
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -644,7 +644,7 @@ function AttendanceView({ staff, refresh, onBack, canEdit, centerId, hideBack }:
 /* ================================================================
    BEDS
    ================================================================ */
-function BedsView({ beds, refresh, onBack, canEdit, centerId, hideBack }: { beds: BedRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean }) {
+function BedsView({ beds, refresh, onBack, canEdit, centerId, hideBack, hideBanner }: { beds: BedRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean; hideBanner?: boolean }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [newCount, setNewCount] = useState("");
@@ -664,7 +664,7 @@ function BedsView({ beds, refresh, onBack, canEdit, centerId, hideBack }: { beds
       {!hideBack && <BackBar label="Bed Availability" onBack={onBack} />}
       <Section id="beds" title="Bed Availability" subtitle="Alerts first, then update or add wards" icon={BedDouble}>
         <div className="space-y-5">
-          {!canEdit && <ReadOnlyBanner />}
+          {!canEdit && !hideBanner && <ReadOnlyBanner />}
           <SubCard title={`Ward Alerts (${alertBeds.length})`} tone="alert" icon={AlertTriangle}>
             {alertBeds.length === 0 ? <p className="text-sm text-muted-foreground">All wards have beds available.</p> : (
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -734,7 +734,7 @@ function BedsView({ beds, refresh, onBack, canEdit, centerId, hideBack }: { beds
 /* ================================================================
    TESTS
    ================================================================ */
-function LabTestsView({ tests, refresh, onBack, canEdit, centerId, hideBack }: { tests: TestRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean }) {
+function LabTestsView({ tests, refresh, onBack, canEdit, centerId, hideBack, hideBanner }: { tests: TestRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean; hideBanner?: boolean }) {
   const [query, setQuery] = useState(""); const [newName, setNewName] = useState("");
   const unavail = tests.filter((t) => !t.available);
   const setAvail = async (id: string, val: boolean) => { await supabase.from("tests").update({ available: val }).eq("id", id); refresh(); };
@@ -749,7 +749,7 @@ function LabTestsView({ tests, refresh, onBack, canEdit, centerId, hideBack }: {
       {!hideBack && <BackBar label="Lab Tests" onBack={onBack} />}
       <Section id="tests" title="Lab Tests" subtitle="Alerts first, then update or add tests" icon={TestTube}>
         <div className="space-y-5">
-          {!canEdit && <ReadOnlyBanner />}
+          {!canEdit && !hideBanner && <ReadOnlyBanner />}
           <SubCard title={`Tests Unavailable (${unavail.length})`} tone="alert" icon={AlertTriangle}>
             {unavail.length === 0 ? <p className="text-sm text-muted-foreground">All tests are available today.</p> : (
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -813,7 +813,7 @@ function LabTestsView({ tests, refresh, onBack, canEdit, centerId, hideBack }: {
 /* ================================================================
    PATHOLOGY
    ================================================================ */
-function PathologyView({ rows, refresh, onBack, canEdit, centerId, hideBack }: { rows: PathRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean }) {
+function PathologyView({ rows, refresh, onBack, canEdit, centerId, hideBack, hideBanner }: { rows: PathRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean; hideBanner?: boolean }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [newTat, setNewTat] = useState("");
@@ -834,7 +834,7 @@ function PathologyView({ rows, refresh, onBack, canEdit, centerId, hideBack }: {
       {!hideBack && <BackBar label="Pathology Lab" onBack={onBack} />}
       <Section id="pathology" title="Pathology Lab" subtitle="Sample collection & report turnaround" icon={FlaskConical}>
         <div className="space-y-5">
-          {!canEdit && <ReadOnlyBanner />}
+          {!canEdit && !hideBanner && <ReadOnlyBanner />}
           <SubCard title={`Reports Pending / Delayed (${pending.length})`} tone="alert" icon={AlertTriangle}>
             {pending.length === 0 ? <p className="text-sm text-muted-foreground">All pathology reports are ready. Great turnaround!</p> : (
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1304,13 +1304,19 @@ function Dashboard({ meds, staff, beds, tests, path, reqs, centers, isAdmin, onN
 const LOW_STOCK = 20;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-type CenterStatus = { level: "red" | "yellow" | "green"; reason: string };
+type CenterStatus = { level: "red" | "yellow" | "green" | "neutral"; reason: string };
 
-function computeCenterStatus(cId: string, meds: Med[], staff: StaffRow[], reqs: ReqRow[]): CenterStatus {
+function computeCenterStatus(cId: string, meds: Med[], staff: StaffRow[], beds: BedRow[], reqs: ReqRow[]): CenterStatus {
   const now = Date.now();
   const cMeds = meds.filter((m) => m.center_id === cId);
   const cStaff = staff.filter((s) => s.center_id === cId);
+  const cBeds = beds.filter((b) => b.center_id === cId);
   const cReqs = reqs.filter((r) => r.center_id === cId);
+
+  const hasData = cMeds.length > 0 || cStaff.length > 0 || cBeds.length > 0;
+  if (!hasData) {
+    return { level: "neutral", reason: "No data submitted yet by this center." };
+  }
 
   const outOfStock = cMeds.filter((m) => m.stock === 0);
   const staffUnmarkedDays = (s: StaffRow) => {
@@ -1368,7 +1374,7 @@ function AdminDashboard({
 }) {
   const withStatus = centers.map((c) => ({
     center: c,
-    status: computeCenterStatus(c.id, meds, staff, reqs),
+    status: computeCenterStatus(c.id, meds, staff, beds, reqs),
     eff: computeEfficiency(c.id, meds, staff, beds),
   }));
   const redCenters = withStatus.filter((w) => w.status.level === "red");
@@ -1382,7 +1388,9 @@ function AdminDashboard({
       ? { chip: "bg-destructive-soft text-destructive", ring: "ring-destructive/30", dot: "bg-destructive", label: "Critical" }
       : lvl === "yellow"
         ? { chip: "bg-amber-100 text-amber-700", ring: "ring-amber-300/40", dot: "bg-amber-500", label: "Attention" }
-        : { chip: "bg-accent-soft text-accent", ring: "ring-accent/20", dot: "bg-accent", label: "Healthy" };
+        : lvl === "neutral"
+          ? { chip: "bg-muted text-muted-foreground", ring: "ring-border", dot: "bg-muted-foreground", label: "Awaiting Data" }
+          : { chip: "bg-accent-soft text-accent", ring: "ring-accent/20", dot: "bg-accent", label: "Healthy" };
 
   return (
     <div className="space-y-6">
@@ -1395,6 +1403,18 @@ function AdminDashboard({
               {redCenters.map((r) => r.center.center_name + " " + r.center.center_type).join(", ")}
             </div>
             <div className="text-xs mt-0.5 opacity-80">Tap a red card below to drill into details.</div>
+          </div>
+        </div>
+      )}
+      {withoutData.length > 0 && (
+        <div className="rounded-2xl border border-border bg-muted text-muted-foreground px-4 py-3 flex items-start gap-3 shadow-[var(--shadow-card)]">
+          <div className="h-5 w-5 mt-0.5 shrink-0 rounded-full bg-muted-foreground/40" />
+          <div className="text-sm">
+            <div className="font-bold">
+              {withoutData.length} center{withoutData.length > 1 ? "s" : ""} awaiting data:{" "}
+              {withoutData.map((r) => r.center.center_name + " " + r.center.center_type).join(", ")}
+            </div>
+            <div className="text-xs mt-0.5 opacity-80">No stock, attendance, or bed records submitted yet.</div>
           </div>
         </div>
       )}
@@ -1538,11 +1558,11 @@ function CenterDrillDown({
     <div className="space-y-6">
       <BackBar label={`${center.center_name} ${center.center_type} · drill-down`} onBack={onBack} />
       <ReadOnlyBanner />
-      <MedicineView meds={cMeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} onRequest={noop} hideBack />
-      <AttendanceView staff={cStaff} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack />
-      <BedsView beds={cBeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack />
-      <LabTestsView tests={cTests} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack />
-      <PathologyView rows={cPath} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack />
+      <MedicineView meds={cMeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} onRequest={noop} hideBack hideBanner />
+      <AttendanceView staff={cStaff} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack hideBanner />
+      <BedsView beds={cBeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack hideBanner />
+      <LabTestsView tests={cTests} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack hideBanner />
+      <PathologyView rows={cPath} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack hideBanner />
     </div>
   );
 }
