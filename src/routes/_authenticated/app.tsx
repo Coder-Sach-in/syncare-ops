@@ -1535,7 +1535,7 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleString();
 }
 
-function AiInsightsPanel({ centers }: { centers: Center[] }) {
+function AiInsightsPanel({ centers, onRequisitionCreated }: { centers: Center[]; onRequisitionCreated?: () => void }) {
   const [insights, setInsights] = useState<AiInsightRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [initial, setInitial] = useState(true);
