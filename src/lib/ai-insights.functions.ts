@@ -174,6 +174,11 @@ export const runAiAnalysis = createServerFn({ method: "POST" })
         const relatedRef = typeof i.related_center_ref === "string" ? i.related_center_ref : (typeof i.related_center_id === "string" ? i.related_center_id : null);
         const center_id = primaryRef && centerByRef[primaryRef] ? centerByRef[primaryRef].id : null;
         const related_center_id = relatedRef && centerByRef[relatedRef] ? centerByRef[relatedRef].id : null;
+        const itemName = typeof i.item_name === "string" && i.item_name.trim() ? stripUuid(i.item_name).slice(0, 200) : null;
+        const rawQty = typeof i.suggested_quantity === "number"
+          ? i.suggested_quantity
+          : (typeof i.suggested_quantity === "string" ? parseInt(i.suggested_quantity, 10) : NaN);
+        const suggestedQty = Number.isFinite(rawQty) && rawQty > 0 ? Math.floor(rawQty) : null;
         return {
           insight_type,
           center_id,
@@ -181,6 +186,8 @@ export const runAiAnalysis = createServerFn({ method: "POST" })
           title: stripUuid(String(i.title ?? "Insight")).slice(0, 200),
           description: stripUuid(String(i.description ?? "")).slice(0, 2000),
           severity,
+          item_name: itemName,
+          suggested_quantity: suggestedQty,
         };
       })
       .filter((r) => r.description.length > 0)
