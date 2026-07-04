@@ -338,11 +338,11 @@ const INITIAL_STAFF: Staff[] = [
   { id: "4", name: "Nurse Rakesh",      role: "Nurse", status: "idle", initials: "RA", color: "oklch(0.65 0.18 250)" },
 ];
 
-function Attendance() {
-  const [staff, setStaff] = useState<Staff[]>(INITIAL_STAFF);
+function Attendance({ staff, setStaff }: { staff: Staff[]; setStaff: React.Dispatch<React.SetStateAction<Staff[]>> }) {
   const [query, setQuery] = useState("");
   const set = (id: string, status: "in" | "out") =>
     setStaff((p) => p.map((s) => s.id === id ? { ...s, status, last: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) } : s));
+
 
   const filtered = staff.filter((s) => {
     const q = query.trim().toLowerCase();
@@ -394,18 +394,19 @@ function Attendance() {
 
 /* ---------- Section 4: Beds ---------- */
 type Bed = { name: string; count: number; available: boolean };
-function Beds() {
-  const [beds, setBeds] = useState<Bed[]>([
-    { name: "General Beds", count: 24, available: true },
-    { name: "ICU Beds", count: 4, available: true },
-    { name: "Emergency Beds", count: 6, available: false },
-    { name: "Maternity Beds", count: 8, available: true },
-  ]);
+const INITIAL_BEDS: Bed[] = [
+  { name: "General Beds", count: 24, available: true },
+  { name: "ICU Beds", count: 4, available: true },
+  { name: "Emergency Beds", count: 6, available: false },
+  { name: "Maternity Beds", count: 8, available: true },
+];
+function Beds({ beds, setBeds }: { beds: Bed[]; setBeds: React.Dispatch<React.SetStateAction<Bed[]>> }) {
   const [query, setQuery] = useState("");
   const change = (i: number, delta: number) =>
     setBeds((p) => p.map((b, idx) => idx === i ? { ...b, count: Math.max(0, b.count + delta) } : b));
   const setAvail = (i: number, val: boolean) =>
     setBeds((p) => p.map((b, idx) => idx === i ? { ...b, available: val } : b));
+
 
   const filtered = beds.map((b, i) => ({ b, i })).filter(({ b }) => b.name.toLowerCase().includes(query.trim().toLowerCase()));
 
@@ -451,13 +452,13 @@ function Beds() {
 }
 
 /* ---------- Section 5: Lab Tests ---------- */
-function LabTests() {
-  const [tests, setTests] = useState(
-    ["Blood Test", "X-Ray", "ECG", "COVID Test", "Urine Test", "CBC"].map((n, i) => ({ name: n, available: i !== 3 }))
-  );
+type LabTest = { name: string; available: boolean };
+const INITIAL_TESTS: LabTest[] = ["Blood Test", "X-Ray", "ECG", "COVID Test", "Urine Test", "CBC"].map((n, i) => ({ name: n, available: i !== 3 }));
+function LabTests({ tests, setTests }: { tests: LabTest[]; setTests: React.Dispatch<React.SetStateAction<LabTest[]>> }) {
   const [query, setQuery] = useState("");
   const setAvail = (i: number, val: boolean) =>
     setTests((p) => p.map((t, idx) => idx === i ? { ...t, available: val } : t));
+
 
   const filtered = tests.map((t, i) => ({ t, i })).filter(({ t }) => t.name.toLowerCase().includes(query.trim().toLowerCase()));
 
@@ -534,29 +535,85 @@ function BottomNav({ active, onSelect }: { active: string; onSelect: (id: string
 }
 
 /* ---------- Dashboard summary ---------- */
-function DashboardSummary({ meds }: { meds: Med[] }) {
+type DashProps = {
+  meds: Med[]; staff: Staff[]; beds: Bed[]; tests: LabTest[];
+  onNavigate: (id: string) => void;
+};
+function DashboardSummary({ meds, staff, beds, tests, onNavigate }: DashProps) {
   const totalStock = meds.reduce((a, m) => a + m.stock, 0);
-  const low = meds.filter((m) => m.stock <= 20).length;
-  const cards = [
-    { label: "Total Medicines", value: meds.length, tone: "primary" },
-    { label: "Units in Stock", value: totalStock, tone: "accent" },
-    { label: "Low Stock Items", value: low, tone: low ? "destructive" : "muted" },
-    { label: "System Status", value: "Healthy", tone: "accent" },
-  ];
-  const tone = (t: string) =>
-    t === "primary" ? "bg-primary-soft text-primary" :
-    t === "accent" ? "bg-accent-soft text-accent" :
-    t === "destructive" ? "bg-destructive-soft text-destructive" : "bg-muted text-foreground";
+  const lowMeds = meds.filter((m) => m.stock <= 20);
+  const present = staff.filter((s) => s.status === "in").length;
+  const notMarked = staff.filter((s) => s.status === "idle");
+  const totalBeds = beds.reduce((a, b) => a + b.count, 0);
+  const bedsNeedAttention = beds.filter((b) => !b.available || b.count <= 2);
+  const availTests = tests.filter((t) => t.available).length;
+  const unavailTests = tests.filter((t) => !t.available);
+
+  const tiles = [
+    {
+      id: "stock", tone: lowMeds.length ? "destructive" : "primary",
+      icon: Pill, label: "Medicine Stock",
+      value: `${totalStock}`, sub: `${meds.length} items · ${lowMeds.length} low`,
+      needs: lowMeds.length ? `Refill: ${lowMeds.slice(0, 3).map((m) => m.name).join(", ")}${lowMeds.length > 3 ? "…" : ""}` : "All stock healthy",
+    },
+    {
+      id: "attendance", tone: present === 0 ? "destructive" : present < staff.length ? "warning" : "accent",
+      icon: Users, label: "Staff Present",
+      value: `${present}/${staff.length}`, sub: `${notMarked.length} not marked`,
+      needs: notMarked.length ? `Mark: ${notMarked.slice(0, 2).map((s) => s.name).join(", ")}${notMarked.length > 2 ? "…" : ""}` : "All staff marked",
+    },
+    {
+      id: "beds", tone: bedsNeedAttention.length ? "warning" : "accent",
+      icon: BedDouble, label: "Beds Available",
+      value: `${totalBeds}`, sub: `${beds.filter((b) => b.available).length}/${beds.length} wards open`,
+      needs: bedsNeedAttention.length ? `Check: ${bedsNeedAttention.slice(0, 2).map((b) => b.name).join(", ")}` : "All wards ok",
+    },
+    {
+      id: "tests", tone: unavailTests.length ? "warning" : "accent",
+      icon: TestTube, label: "Lab Tests",
+      value: `${availTests}/${tests.length}`, sub: `${unavailTests.length} unavailable`,
+      needs: unavailTests.length ? `Down: ${unavailTests.slice(0, 2).map((t) => t.name).join(", ")}` : "All tests running",
+    },
+  ] as const;
+
+  const toneMap = (t: string) => {
+    switch (t) {
+      case "primary": return { chip: "bg-primary-soft text-primary", ring: "ring-primary/20", dot: "bg-primary" };
+      case "accent": return { chip: "bg-accent-soft text-accent", ring: "ring-accent/20", dot: "bg-accent" };
+      case "destructive": return { chip: "bg-destructive-soft text-destructive", ring: "ring-destructive/30", dot: "bg-destructive" };
+      case "warning": return { chip: "bg-amber-100 text-amber-700", ring: "ring-amber-300/40", dot: "bg-amber-500" };
+      default: return { chip: "bg-muted text-foreground", ring: "ring-border", dot: "bg-muted-foreground" };
+    }
+  };
 
   return (
-    <Section id="dashboard" title="Today at a glance" subtitle="Live overview of your center" icon={Activity}>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        {cards.map((c) => (
-          <div key={c.label} className={`rounded-2xl p-4 ${tone(c.tone)}`}>
-            <div className="text-xs font-semibold opacity-80">{c.label}</div>
-            <div className="mt-2 text-2xl md:text-3xl font-bold">{c.value}</div>
-          </div>
-        ))}
+    <Section id="dashboard" title="Today at a glance" subtitle="Tap any card to open that section" icon={Activity}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        {tiles.map((c) => {
+          const t = toneMap(c.tone);
+          const Icon = c.icon;
+          return (
+            <button
+              key={c.id}
+              onClick={() => onNavigate(c.id)}
+              className={`text-left rounded-2xl bg-card border border-border p-4 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] hover:-translate-y-0.5 active:scale-[0.98] transition-all ring-1 ${t.ring}`}
+            >
+              <div className="flex items-center justify-between">
+                <div className={`h-10 w-10 rounded-xl grid place-items-center ${t.chip}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <span className={`h-2.5 w-2.5 rounded-full ${t.dot}`} />
+              </div>
+              <div className="mt-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{c.label}</div>
+              <div className="mt-1 text-3xl font-bold tabular-nums">{c.value}</div>
+              <div className="text-xs text-muted-foreground">{c.sub}</div>
+              <div className={`mt-3 text-xs font-semibold px-2.5 py-1.5 rounded-lg ${t.chip} line-clamp-2`}>
+                {c.needs}
+              </div>
+              <div className="mt-2 text-[11px] font-semibold text-primary">Open section →</div>
+            </button>
+          );
+        })}
       </div>
     </Section>
   );
@@ -565,6 +622,9 @@ function DashboardSummary({ meds }: { meds: Med[] }) {
 /* ---------- Page ---------- */
 function Index() {
   const [meds, setMeds] = useState<Med[]>(INITIAL_MEDS);
+  const [staff, setStaff] = useState<Staff[]>(INITIAL_STAFF);
+  const [beds, setBeds] = useState<Bed[]>(INITIAL_BEDS);
+  const [tests, setTests] = useState<LabTest[]>(INITIAL_TESTS);
   const [active, setActive] = useState("dashboard");
 
   const onSelect = (id: string) => {
@@ -578,7 +638,7 @@ function Index() {
     <div className="min-h-screen bg-background pb-24">
       <Header centerName="Rampur PHC" />
       <main className="mx-auto max-w-7xl px-4 md:px-6 py-6 space-y-10">
-        <DashboardSummary meds={meds} />
+        <DashboardSummary meds={meds} staff={staff} beds={beds} tests={tests} onNavigate={onSelect} />
 
         <Section id="stock" title="Medicine Stock" subtitle="Search, add new, and update quickly" icon={Pill}>
           <MedicineStock meds={meds} setMeds={setMeds} />
@@ -589,18 +649,19 @@ function Index() {
         </Section>
 
         <Section id="attendance" title="Doctor & Nurse Attendance" subtitle="Search by name and mark check-in / out" icon={Users}>
-          <Attendance />
+          <Attendance staff={staff} setStaff={setStaff} />
         </Section>
 
         <Section id="beds" title="Bed Availability" subtitle="Search and update bed status" icon={BedDouble}>
-          <Beds />
+          <Beds beds={beds} setBeds={setBeds} />
         </Section>
 
         <Section id="tests" title="Lab Tests" subtitle="Search tests and set today's availability" icon={TestTube}>
-          <LabTests />
+          <LabTests tests={tests} setTests={setTests} />
         </Section>
       </main>
       <BottomNav active={active} onSelect={onSelect} />
     </div>
   );
 }
+
