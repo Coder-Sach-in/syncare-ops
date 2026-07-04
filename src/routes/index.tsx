@@ -452,13 +452,13 @@ function Beds({ beds, setBeds }: { beds: Bed[]; setBeds: React.Dispatch<React.Se
 }
 
 /* ---------- Section 5: Lab Tests ---------- */
-function LabTests() {
-  const [tests, setTests] = useState(
-    ["Blood Test", "X-Ray", "ECG", "COVID Test", "Urine Test", "CBC"].map((n, i) => ({ name: n, available: i !== 3 }))
-  );
+type LabTest = { name: string; available: boolean };
+const INITIAL_TESTS: LabTest[] = ["Blood Test", "X-Ray", "ECG", "COVID Test", "Urine Test", "CBC"].map((n, i) => ({ name: n, available: i !== 3 }));
+function LabTests({ tests, setTests }: { tests: LabTest[]; setTests: React.Dispatch<React.SetStateAction<LabTest[]>> }) {
   const [query, setQuery] = useState("");
   const setAvail = (i: number, val: boolean) =>
     setTests((p) => p.map((t, idx) => idx === i ? { ...t, available: val } : t));
+
 
   const filtered = tests.map((t, i) => ({ t, i })).filter(({ t }) => t.name.toLowerCase().includes(query.trim().toLowerCase()));
 
