@@ -1520,6 +1520,8 @@ type AiInsightRow = {
   description: string;
   severity: "high" | "medium" | "low";
   generated_at: string;
+  item_name: string | null;
+  suggested_quantity: number | null;
 };
 
 function timeAgo(iso: string): string {
@@ -1533,7 +1535,39 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleString();
 }
 
-function AiInsightsPanel({ centers }: { centers: Center[] }) {
+function CreateReqFromInsightButton({ centerId, itemName, quantity, onCreated }: { centerId: string; itemName: string; quantity: number; onCreated?: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const submit = async () => {
+    setBusy(true);
+    const { error } = await supabase.from("requisition_requests").insert({
+      center_id: centerId,
+      item_type: "medicine",
+      item_name: itemName,
+      quantity_requested: Math.max(1, Math.floor(quantity)),
+      status: "Pending",
+    });
+    setBusy(false);
+    if (error) { toast.error(`Could not create requisition: ${error.message}`); return; }
+    setDone(true);
+    toast.success(`Requisition created — ${quantity} × ${itemName}`);
+    onCreated?.();
+  };
+  return (
+    <button
+      type="button"
+      onClick={submit}
+      disabled={busy || done}
+      className="mt-3 w-full h-9 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold inline-flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60 transition"
+    >
+      {done ? (<><Check className="h-3.5 w-3.5" /> Requisition created</>)
+        : busy ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…</>)
+        : (<><Send className="h-3.5 w-3.5" /> Create Requisition from this Suggestion</>)}
+    </button>
+  );
+}
+
+function AiInsightsPanel({ centers, onRequisitionCreated }: { centers: Center[]; onRequisitionCreated?: () => void }) {
   const [insights, setInsights] = useState<AiInsightRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [initial, setInitial] = useState(true);
@@ -1657,6 +1691,11 @@ function AiInsightsPanel({ centers }: { centers: Center[] }) {
                     const s = sevMeta(i.severity);
                     const cN = centerName(i.center_id);
                     const rN = centerName(i.related_center_id);
+                    const canCreateReq =
+                      i.insight_type === "redistribution" &&
+                      !!i.center_id &&
+                      !!i.item_name &&
+                      !!i.suggested_quantity;
                     return (
                       <div key={i.id} className={`rounded-xl bg-card border border-border p-3 ring-1 ${s.ring}`}>
                         <div className="flex items-start justify-between gap-2">
@@ -1673,6 +1712,14 @@ function AiInsightsPanel({ centers }: { centers: Center[] }) {
                           </span>
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{i.description}</p>
+                        {canCreateReq && (
+                          <CreateReqFromInsightButton
+                            centerId={i.center_id!}
+                            itemName={i.item_name!}
+                            quantity={i.suggested_quantity!}
+                            onCreated={onRequisitionCreated}
+                          />
+                        )}
                       </div>
                     );
                   })}
@@ -1687,11 +1734,11 @@ function AiInsightsPanel({ centers }: { centers: Center[] }) {
 }
 
 function AdminDashboard({
-  centers, meds, staff, beds, tests, path, reqs, onDrill, onOpenReqs,
+  centers, meds, staff, beds, tests, path, reqs, onDrill, onOpenReqs, onRefresh,
 
 }: {
   centers: Center[]; meds: Med[]; staff: StaffRow[]; beds: BedRow[]; tests: TestRow[]; path: PathRow[]; reqs: ReqRow[];
-  onDrill: (centerId: string) => void; onOpenReqs: () => void;
+  onDrill: (centerId: string) => void; onOpenReqs: () => void; onRefresh?: () => void;
 }) {
   const withStatus = centers.map((c) => ({
     center: c,
@@ -1715,7 +1762,7 @@ function AdminDashboard({
 
   return (
     <div className="space-y-6">
-      <AiInsightsPanel centers={centers} />
+      <AiInsightsPanel centers={centers} onRequisitionCreated={onRefresh} />
 
       {redCenters.length > 0 && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive-soft text-destructive px-4 py-3 flex items-start gap-3 shadow-[var(--shadow-card)]">
@@ -1953,6 +2000,7 @@ function AppPage() {
           <AdminDashboard centers={centers} meds={meds} staff={staff} beds={beds} tests={tests} path={path} reqs={reqs}
             onDrill={(id) => { setDrillCenterId(id); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); }}
             onOpenReqs={() => onSelect("requisitions")}
+            onRefresh={refreshAll}
           />
         )}
         {active === "dashboard" && !isAdmin && (

@@ -11,6 +11,8 @@ type AiInsight = {
   title: string;
   description: string;
   severity: Severity;
+  item_name: string | null;
+  suggested_quantity: number | null;
 };
 
 async function assertAdmin(supabase: any, userId: string) {
@@ -27,15 +29,17 @@ const SYSTEM_PROMPT = `You are a public-health operations analyst helping a dist
 
 Return STRICT JSON only. No markdown fences, no preamble, no trailing text. The response MUST be a JSON array of insight objects with EXACTLY these keys:
   - insight_type: one of "stockout" | "redistribution" | "expiry" | "footfall"
-  - center_ref: the short "ref" code of the primary related center (e.g. "C1"), or null. Use the ref codes exactly as provided in the "centers" list — DO NOT invent UUIDs and DO NOT put any UUID or ref code inside the title or description text.
-  - related_center_ref: the ref code of the second/destination center (only for redistribution), else null
+  - center_ref: the short "ref" code of the primary related center (e.g. "C1"), or null. For "redistribution" this MUST be the DESTINATION center — the one that is SHORT of the medicine and would receive the transfer. Use the ref codes exactly as provided in the "centers" list — DO NOT invent UUIDs and DO NOT put any UUID or ref code inside the title or description text.
+  - related_center_ref: the ref code of the second center. For "redistribution" this MUST be the SOURCE center — the one holding the surplus of the same medicine. Null for other categories.
   - title: short headline (< 70 chars). Use the plain center NAME (e.g. "Ghatia CHC"), never a code or UUID.
   - description: 1-3 sentences in simple, plain English explaining WHAT is happening and WHY, referencing concrete numbers from the data. Use the plain center NAME only — never a ref code, never a UUID. Avoid jargon.
   - severity: "high" | "medium" | "low"
+  - item_name: For "redistribution" and "expiry" insights, the exact medicine name from the stock data (string). Null for other categories.
+  - suggested_quantity: For "redistribution" insights, an integer count of units recommended to transfer from source to destination (a sensible amount the source can spare and the destination needs). Null for other categories.
 
 Cover these categories when the data supports them (skip a category rather than invent):
   a) stockout   — medicines at real risk of running out soon based on current low stock and demand signals. Explain reasoning.
-  b) redistribution — one center is short of a medicine while another has surplus of the SAME medicine. Recommend a specific transfer.
+  b) redistribution — one center is short of a medicine while another has surplus of the SAME medicine. Recommend a specific transfer with an item_name and suggested_quantity. center_ref = destination (short), related_center_ref = source (surplus).
   c) expiry     — for EVERY stock row whose "expiry_date" is within the next 30 days from today (see "today" in the payload), generate ONE "expiry" insight. Severity: "high" if expiry_date is within 7 days OR expiry_date is already in the past; "medium" if within 30 days. Description MUST state the medicine name, the current stock quantity, the exact expiry date, and how many days remain (use negative wording like "expired X days ago" if already past). Recommend either using the stock soon at that center or transferring it to another center that shows active demand for the SAME medicine (low stock, a pending requisition for it, or higher throughput). If no stock row has an expiry_date within 30 days, skip this category entirely — do not invent expiry insights.
   d) footfall   — compare THIS WEEK's total patient footfall vs LAST WEEK's total per center using the "footfall_weekly" summary. Only generate a footfall insight for a center with data in BOTH weeks. If a center lacks 2 weeks of data, SKIP it — do not guess from proxies.
 
@@ -170,6 +174,11 @@ export const runAiAnalysis = createServerFn({ method: "POST" })
         const relatedRef = typeof i.related_center_ref === "string" ? i.related_center_ref : (typeof i.related_center_id === "string" ? i.related_center_id : null);
         const center_id = primaryRef && centerByRef[primaryRef] ? centerByRef[primaryRef].id : null;
         const related_center_id = relatedRef && centerByRef[relatedRef] ? centerByRef[relatedRef].id : null;
+        const itemName = typeof i.item_name === "string" && i.item_name.trim() ? stripUuid(i.item_name).slice(0, 200) : null;
+        const rawQty = typeof i.suggested_quantity === "number"
+          ? i.suggested_quantity
+          : (typeof i.suggested_quantity === "string" ? parseInt(i.suggested_quantity, 10) : NaN);
+        const suggestedQty = Number.isFinite(rawQty) && rawQty > 0 ? Math.floor(rawQty) : null;
         return {
           insight_type,
           center_id,
@@ -177,6 +186,8 @@ export const runAiAnalysis = createServerFn({ method: "POST" })
           title: stripUuid(String(i.title ?? "Insight")).slice(0, 200),
           description: stripUuid(String(i.description ?? "")).slice(0, 2000),
           severity,
+          item_name: itemName,
+          suggested_quantity: suggestedQty,
         };
       })
       .filter((r) => r.description.length > 0)

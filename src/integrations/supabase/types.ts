@@ -21,8 +21,10 @@ export type Database = {
           generated_at: string
           id: string
           insight_type: string
+          item_name: string | null
           related_center_id: string | null
           severity: string
+          suggested_quantity: number | null
           title: string
         }
         Insert: {
@@ -31,8 +33,10 @@ export type Database = {
           generated_at?: string
           id?: string
           insight_type: string
+          item_name?: string | null
           related_center_id?: string | null
           severity: string
+          suggested_quantity?: number | null
           title: string
         }
         Update: {
@@ -41,8 +45,10 @@ export type Database = {
           generated_at?: string
           id?: string
           insight_type?: string
+          item_name?: string | null
           related_center_id?: string | null
           severity?: string
+          suggested_quantity?: number | null
           title?: string
         }
         Relationships: [
