@@ -734,7 +734,7 @@ function BedsView({ beds, refresh, onBack, canEdit, centerId, hideBack }: { beds
 /* ================================================================
    TESTS
    ================================================================ */
-function LabTestsView({ tests, refresh, onBack, canEdit, centerId }: { tests: TestRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null }) {
+function LabTestsView({ tests, refresh, onBack, canEdit, centerId, hideBack }: { tests: TestRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean }) {
   const [query, setQuery] = useState(""); const [newName, setNewName] = useState("");
   const unavail = tests.filter((t) => !t.available);
   const setAvail = async (id: string, val: boolean) => { await supabase.from("tests").update({ available: val }).eq("id", id); refresh(); };
