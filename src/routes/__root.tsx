@@ -77,14 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "SmartSehat AI" },
+      { name: "description", content: "SmartSehat AI empowers PHCs with real-time monitoring and AI-driven decision support for smarter healthcare management." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "SmartSehat AI" },
+      { property: "og:description", content: "SmartSehat AI empowers PHCs with real-time monitoring and AI-driven decision support for smarter healthcare management." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "SmartSehat AI" },
+      { name: "twitter:description", content: "SmartSehat AI empowers PHCs with real-time monitoring and AI-driven decision support for smarter healthcare management." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/eoPGloLMJOVYRck4BhEmnpe10Rf1/social-images/social-1783173032663-Screenshot_2026-07-04_191315.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/eoPGloLMJOVYRck4BhEmnpe10Rf1/social-images/social-1783173032663-Screenshot_2026-07-04_191315.webp" },
     ],
     links: [
       {
