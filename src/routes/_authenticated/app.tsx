@@ -563,7 +563,7 @@ function AttendanceView({ staff, refresh, onBack, canEdit, centerId, hideBack }:
 
   return (
     <div className="space-y-5">
-      <BackBar label="Staff Attendance" onBack={onBack} />
+      {!hideBack && <BackBar label="Staff Attendance" onBack={onBack} />}
       <Section id="attendance" title="Doctor & Nurse Attendance" subtitle="Alerts first, then mark or add staff" icon={Users}>
         <div className="space-y-5">
           {!canEdit && <ReadOnlyBanner />}
