@@ -6,10 +6,14 @@ import {
   LogIn, LogOut, CheckCircle2, XCircle, Pill, Activity, PlusCircle,
   AlertTriangle, ArrowLeft, FlaskConical, Building2, ShieldCheck,
   KeyRound, Send, Copy, Check, ClipboardList, Pencil, Trash2, X,
+  Sparkles, PackageX, ArrowLeftRight, CalendarClock, TrendingUp, Loader2, RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { adminResetPassword, adminCreateCenter, adminListStaff } from "@/lib/admin.functions";
+import { runAiAnalysis, listAiInsights } from "@/lib/ai-insights.functions";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/app")({
   head: () => ({
@@ -1366,8 +1370,184 @@ function computeEfficiency(cId: string, meds: Med[], staff: StaffRow[], beds: Be
   return { hasData: true as const, stockScore, attendanceScore, bedScore, total };
 }
 
+type AiInsightRow = {
+  id: string;
+  insight_type: "stockout" | "redistribution" | "expiry" | "footfall";
+  center_id: string | null;
+  related_center_id: string | null;
+  title: string;
+  description: string;
+  severity: "high" | "medium" | "low";
+  generated_at: string;
+};
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return new Date(iso).toLocaleString();
+}
+
+function AiInsightsPanel({ centers }: { centers: Center[] }) {
+  const [insights, setInsights] = useState<AiInsightRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [initial, setInitial] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastRun, setLastRun] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+
+  const runFn = useServerFn(runAiAnalysis);
+  const listFn = useServerFn(listAiInsights);
+
+  const refresh = useCallback(async () => {
+    try {
+      const rows = (await listFn()) as AiInsightRow[];
+      setInsights(rows);
+      if (rows.length > 0) setLastRun(rows[0].generated_at);
+    } catch {
+      /* silent */
+    } finally {
+      setInitial(false);
+    }
+  }, [listFn]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { const t = setInterval(() => setTick((n) => n + 1), 30000); return () => clearInterval(t); }, []);
+
+  const onRun = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await runFn();
+      setLastRun(res.generated_at);
+      await refresh();
+      toast.success(`AI analysis complete — ${res.count} insight${res.count === 1 ? "" : "s"}`);
+    } catch (e: any) {
+      setError(e?.message ?? "AI analysis failed");
+      toast.error("AI analysis failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const centerName = (id: string | null) => {
+    if (!id) return null;
+    const c = centers.find((x) => x.id === id);
+    return c ? `${c.center_name} ${c.center_type}` : null;
+  };
+
+  const typeMeta = (t: AiInsightRow["insight_type"]) => {
+    switch (t) {
+      case "stockout": return { icon: PackageX, label: "Stock-out risk" };
+      case "redistribution": return { icon: ArrowLeftRight, label: "Redistribution" };
+      case "expiry": return { icon: CalendarClock, label: "Expiry risk" };
+      case "footfall": return { icon: TrendingUp, label: "Footfall trend" };
+    }
+  };
+  const sevMeta = (s: AiInsightRow["severity"]) => {
+    if (s === "high") return { chip: "bg-destructive-soft text-destructive", ring: "ring-destructive/30", dot: "bg-destructive", label: "High" };
+    if (s === "medium") return { chip: "bg-amber-100 text-amber-700", ring: "ring-amber-300/40", dot: "bg-amber-500", label: "Medium" };
+    return { chip: "bg-muted text-muted-foreground", ring: "ring-border", dot: "bg-muted-foreground", label: "Low" };
+  };
+
+  const grouped: Record<AiInsightRow["insight_type"], AiInsightRow[]> = {
+    stockout: [], redistribution: [], expiry: [], footfall: [],
+  };
+  for (const i of insights) grouped[i.insight_type].push(i);
+  const order: AiInsightRow["insight_type"][] = ["stockout", "redistribution", "expiry", "footfall"];
+
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary-soft/40 to-transparent p-4 md:p-5 shadow-[var(--shadow-card)]">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-10 w-10 rounded-xl grid place-items-center bg-primary-soft text-primary shrink-0">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="font-bold text-base md:text-lg leading-tight">AI Insights</div>
+            <div className="text-xs text-muted-foreground">
+              {lastRun ? <>Last analyzed: <span className="font-semibold text-foreground">{timeAgo(lastRun)}</span></> : "Not analyzed yet"}
+              {tick >= 0 ? "" : ""}
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={onRun}
+          disabled={loading}
+          className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm inline-flex items-center gap-2 hover:opacity-90 disabled:opacity-60 transition"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {loading ? "Analyzing…" : insights.length ? "Re-run AI Analysis" : "Run AI Analysis"}
+        </button>
+      </div>
+
+      {error && (
+        <div className="mt-3 rounded-lg border border-amber-300/40 bg-amber-100 text-amber-800 px-3 py-2 text-xs">
+          AI analysis unavailable, showing rule-based status. ({error})
+        </div>
+      )}
+
+      {!initial && !loading && insights.length === 0 && !error && (
+        <div className="mt-3 text-sm text-muted-foreground">
+          No AI insights yet. Click <span className="font-semibold">Run AI Analysis</span> to generate plain-language recommendations from your current data.
+        </div>
+      )}
+
+      {insights.length > 0 && (
+        <div className="mt-4 space-y-4">
+          {order.map((t) => {
+            const items = grouped[t];
+            if (items.length === 0) return null;
+            const meta = typeMeta(t);
+            const Icon = meta.icon;
+            return (
+              <div key={t}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon className="h-4 w-4 text-primary" />
+                  <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{meta.label}</div>
+                  <div className="text-xs text-muted-foreground">· {items.length}</div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {items.map((i) => {
+                    const s = sevMeta(i.severity);
+                    const cN = centerName(i.center_id);
+                    const rN = centerName(i.related_center_id);
+                    return (
+                      <div key={i.id} className={`rounded-xl bg-card border border-border p-3 ring-1 ${s.ring}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="font-semibold text-sm leading-snug">{i.title}</div>
+                            {(cN || rN) && (
+                              <div className="mt-0.5 text-[11px] text-muted-foreground truncate">
+                                {cN}{rN ? <> <ArrowLeftRight className="inline h-3 w-3 mx-0.5 -mt-0.5" /> {rN}</> : null}
+                              </div>
+                            )}
+                          </div>
+                          <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${s.chip}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} /> {s.label}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{i.description}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminDashboard({
   centers, meds, staff, beds, tests, path, reqs, onDrill, onOpenReqs,
+
 }: {
   centers: Center[]; meds: Med[]; staff: StaffRow[]; beds: BedRow[]; tests: TestRow[]; path: PathRow[]; reqs: ReqRow[];
   onDrill: (centerId: string) => void; onOpenReqs: () => void;
@@ -1394,6 +1574,8 @@ function AdminDashboard({
 
   return (
     <div className="space-y-6">
+      <AiInsightsPanel centers={centers} />
+
       {redCenters.length > 0 && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive-soft text-destructive px-4 py-3 flex items-start gap-3 shadow-[var(--shadow-card)]">
           <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
