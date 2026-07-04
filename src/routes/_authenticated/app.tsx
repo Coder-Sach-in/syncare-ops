@@ -14,7 +14,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/app")({
   head: () => ({
     meta: [
-      { title: "HealthSync AI — Portal" },
+      { title: "SmartSehat AI — Portal" },
       { name: "description", content: "Ground-level healthcare portal for PHC/CHC staff." },
     ],
   }),
@@ -78,7 +78,7 @@ function Header({ centerName, role, email, onSignOut }: { centerName: string; ro
             <Hospital className="h-6 w-6" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-base md:text-lg font-bold leading-tight truncate">HealthSync AI</h1>
+            <h1 className="text-base md:text-lg font-bold leading-tight truncate">SmartSehat AI</h1>
             <p className="text-[11px] md:text-xs text-muted-foreground truncate">{role === "district_admin" ? "District Admin Portal" : "PHC / CHC Staff Portal"}</p>
           </div>
         </div>

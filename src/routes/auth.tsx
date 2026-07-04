@@ -6,8 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — HealthSync AI" },
-      { name: "description", content: "Sign in to the HealthSync AI healthcare portal." },
+      { title: "Sign in — SmartSehat AI" },
+      { name: "description", content: "Sign in to the SmartSehat AI healthcare portal." },
     ],
   }),
   component: AuthPage,
@@ -46,7 +46,7 @@ function AuthPage() {
           <div className="mx-auto h-14 w-14 rounded-2xl bg-primary text-primary-foreground grid place-items-center shadow-[var(--shadow-elevated)]">
             <Hospital className="h-7 w-7" />
           </div>
-          <h1 className="mt-3 text-2xl font-bold">HealthSync AI</h1>
+          <h1 className="mt-3 text-2xl font-bold">SmartSehat AI</h1>
           <p className="text-sm text-muted-foreground">PHC / CHC Staff Portal · Ujjain District</p>
         </div>
 
