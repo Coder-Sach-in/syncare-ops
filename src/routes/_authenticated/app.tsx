@@ -1520,6 +1520,8 @@ type AiInsightRow = {
   description: string;
   severity: "high" | "medium" | "low";
   generated_at: string;
+  item_name: string | null;
+  suggested_quantity: number | null;
 };
 
 function timeAgo(iso: string): string {
