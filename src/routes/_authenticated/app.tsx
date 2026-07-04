@@ -293,7 +293,7 @@ function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest, hid
 
   return (
     <div className="space-y-5">
-      <BackBar label="Medicine Stock" onBack={onBack} />
+      {!hideBack && <BackBar label="Medicine Stock" onBack={onBack} />}
       <Section id="stock" title="Medicine Stock" subtitle="Alerts first, then update or add new" icon={Pill}
         actions={canEdit ? (
           <button onClick={onRequest} className="h-11 px-4 rounded-xl bg-accent text-accent-foreground font-semibold text-sm inline-flex items-center gap-2 hover:brightness-110 active:scale-95 transition">
