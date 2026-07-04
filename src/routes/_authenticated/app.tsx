@@ -684,10 +684,15 @@ function LabTestsView({ tests, refresh, onBack, canEdit, centerId }: { tests: Te
                 {filtered.map((t) => (
                   <div key={t.id} className="rounded-2xl bg-white border border-border p-4 shadow-[var(--shadow-card)]">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-10 w-10 rounded-xl bg-primary-soft text-primary grid place-items-center"><TestTube className="h-5 w-5" /></div>
-                        <div>
-                          <div className="font-semibold">{t.name}</div>
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="h-10 w-10 rounded-xl bg-primary-soft text-primary grid place-items-center shrink-0"><TestTube className="h-5 w-5" /></div>
+                        <div className="min-w-0 flex-1">
+                          <NameWithActions
+                            name={t.name}
+                            canEdit={canEdit}
+                            onSave={async (v) => { await supabase.from("tests").update({ name: v }).eq("id", t.id); refresh(); }}
+                            onDelete={async () => { await supabase.from("tests").delete().eq("id", t.id); refresh(); }}
+                          />
                           <div className={`text-xs font-medium ${t.available ? "text-accent" : "text-destructive"}`}>{t.available ? "● Available today" : "● Not available"}</div>
                         </div>
                       </div>
