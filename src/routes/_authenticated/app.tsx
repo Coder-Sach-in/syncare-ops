@@ -2000,6 +2000,7 @@ function AppPage() {
           <AdminDashboard centers={centers} meds={meds} staff={staff} beds={beds} tests={tests} path={path} reqs={reqs}
             onDrill={(id) => { setDrillCenterId(id); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); }}
             onOpenReqs={() => onSelect("requisitions")}
+            onRefresh={refreshAll}
           />
         )}
         {active === "dashboard" && !isAdmin && (
