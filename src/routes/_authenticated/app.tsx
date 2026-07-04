@@ -746,7 +746,7 @@ function LabTestsView({ tests, refresh, onBack, canEdit, centerId, hideBack }: {
   };
   return (
     <div className="space-y-5">
-      <BackBar label="Lab Tests" onBack={onBack} />
+      {!hideBack && <BackBar label="Lab Tests" onBack={onBack} />}
       <Section id="tests" title="Lab Tests" subtitle="Alerts first, then update or add tests" icon={TestTube}>
         <div className="space-y-5">
           {!canEdit && <ReadOnlyBanner />}
