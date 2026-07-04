@@ -378,6 +378,7 @@ function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest }: {
 
 /* ---------- Voice ---------- */
 import { transcribeAudio } from "@/lib/transcribe.functions";
+import { parseVoiceCommand } from "@/lib/parseVoiceCommand.functions";
 
 const NUMBER_WORDS: Record<string, number> = {
   zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
