@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Package, Users, BedDouble, TestTube, Settings,
   LogIn, LogOut, CheckCircle2, XCircle, Pill, Activity, PlusCircle,
   AlertTriangle, ArrowLeft, FlaskConical, Building2, ShieldCheck,
-  KeyRound, Send, Copy, Check, ClipboardList,
+  KeyRound, Send, Copy, Check, ClipboardList, Pencil, Trash2, X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { adminResetPassword, adminCreateCenter, adminListStaff } from "@/lib/admin.functions";
@@ -168,6 +168,96 @@ function ReadOnlyBanner() {
   );
 }
 
+/* Reusable rename + delete controls used on every item card */
+function NameWithActions({
+  name, canEdit, onSave, onDelete, nameClassName,
+}: {
+  name: string; canEdit: boolean;
+  onSave: (v: string) => Promise<void> | void;
+  onDelete: () => Promise<void> | void;
+  nameClassName?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(name);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setVal(name); }, [name]);
+
+  const commit = async () => {
+    const v = val.trim();
+    if (!v) { setVal(name); setEditing(false); return; }
+    if (v === name) { setEditing(false); return; }
+    setBusy(true);
+    try { await onSave(v); } finally { setBusy(false); setEditing(false); }
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1 min-w-0 flex-1">
+        <input
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setVal(name); setEditing(false); } }}
+          autoFocus
+          disabled={busy}
+          className="h-8 px-2 rounded-md border border-primary/40 bg-white text-sm font-semibold min-w-0 flex-1 focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+        <button type="button" onClick={commit} disabled={busy} title="Save"
+          className="h-7 w-7 shrink-0 grid place-items-center rounded-md bg-accent text-accent-foreground hover:brightness-110 active:scale-95 transition disabled:opacity-50">
+          <Check className="h-3.5 w-3.5" />
+        </button>
+        <button type="button" onClick={() => { setVal(name); setEditing(false); }} disabled={busy} title="Cancel"
+          className="h-7 w-7 shrink-0 grid place-items-center rounded-md bg-muted text-foreground hover:bg-secondary active:scale-95 transition">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+      <div className={nameClassName ?? "font-semibold truncate min-w-0"}>{name}</div>
+      {canEdit && (
+        <>
+          <button type="button" onClick={() => setEditing(true)} title="Rename"
+            className="h-7 w-7 shrink-0 grid place-items-center rounded-md text-muted-foreground hover:bg-primary-soft hover:text-primary active:scale-95 transition">
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button type="button" onClick={() => setConfirming(true)} title="Delete"
+            className="h-7 w-7 shrink-0 grid place-items-center rounded-md text-muted-foreground hover:bg-destructive-soft hover:text-destructive active:scale-95 transition">
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </>
+      )}
+      {confirming && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm grid place-items-center p-4" onClick={() => setConfirming(false)}>
+          <div className="bg-white rounded-2xl p-5 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="h-10 w-10 rounded-xl bg-destructive-soft text-destructive grid place-items-center shrink-0">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-base">Remove &ldquo;{name}&rdquo;?</div>
+                <div className="text-sm text-muted-foreground mt-0.5">This can&apos;t be undone.</div>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setConfirming(false)} disabled={busy}
+                className="h-10 px-4 rounded-xl bg-muted font-semibold text-sm hover:bg-secondary transition">Cancel</button>
+              <button
+                onClick={async () => { setBusy(true); try { await onDelete(); } finally { setBusy(false); setConfirming(false); } }}
+                disabled={busy}
+                className="h-10 px-4 rounded-xl bg-destructive text-destructive-foreground font-semibold text-sm hover:brightness-110 active:scale-95 transition disabled:opacity-50">
+                {busy ? "Removing..." : "Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ================================================================
    MEDICINE
    ================================================================ */
@@ -247,10 +337,15 @@ function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest }: {
                   return (
                     <div key={m.id} className="rounded-2xl bg-white border border-border p-4 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <div className="h-10 w-10 rounded-xl bg-primary-soft grid place-items-center"><Pill className="h-5 w-5 text-primary" /></div>
-                          <div>
-                            <div className="font-semibold">{m.name}</div>
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="h-10 w-10 rounded-xl bg-primary-soft grid place-items-center shrink-0"><Pill className="h-5 w-5 text-primary" /></div>
+                          <div className="min-w-0 flex-1">
+                            <NameWithActions
+                              name={m.name}
+                              canEdit={canEdit}
+                              onSave={async (v) => { await supabase.from("stock").update({ name: v }).eq("id", m.id); refresh(); }}
+                              onDelete={async () => { await supabase.from("stock").delete().eq("id", m.id); refresh(); }}
+                            />
                             <div className={`text-xs font-medium ${low ? "text-destructive" : "text-muted-foreground"}`}>{low ? "Low stock" : "In stock"}</div>
                           </div>
                         </div>
@@ -416,7 +511,12 @@ function AttendanceView({ staff, refresh, onBack, canEdit, centerId }: { staff: 
                     <div className="flex items-center gap-3">
                       <div className="h-14 w-14 rounded-full grid place-items-center text-white font-bold text-lg bg-primary">{initials(s.name)}</div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold truncate">{s.name}</div>
+                        <NameWithActions
+                          name={s.name}
+                          canEdit={canEdit}
+                          onSave={async (v) => { await supabase.from("attendance").update({ name: v }).eq("id", s.id); refresh(); }}
+                          onDelete={async () => { await supabase.from("attendance").delete().eq("id", s.id); refresh(); }}
+                        />
                         <div className="text-xs text-muted-foreground">{s.role}</div>
                         <div className="mt-1 text-xs font-semibold">
                           {s.status === "in" && <span className="text-accent">🟢 Present {s.last_marked_at && `· ${timeOf(s.last_marked_at)}`}</span>}
@@ -502,8 +602,13 @@ function BedsView({ beds, refresh, onBack, canEdit, centerId }: { beds: BedRow[]
                 {filtered.map((b) => (
                   <div key={b.id} className="rounded-2xl bg-white border border-border p-4 shadow-[var(--shadow-card)]">
                     <div className="flex items-center gap-2.5">
-                      <div className={`h-10 w-10 rounded-xl grid place-items-center ${b.available ? "bg-accent-soft text-accent" : "bg-destructive-soft text-destructive"}`}><BedDouble className="h-5 w-5" /></div>
-                      <div className="font-semibold">{b.name}</div>
+                      <div className={`h-10 w-10 rounded-xl grid place-items-center shrink-0 ${b.available ? "bg-accent-soft text-accent" : "bg-destructive-soft text-destructive"}`}><BedDouble className="h-5 w-5" /></div>
+                      <NameWithActions
+                        name={b.name}
+                        canEdit={canEdit}
+                        onSave={async (v) => { await supabase.from("beds").update({ name: v }).eq("id", b.id); refresh(); }}
+                        onDelete={async () => { await supabase.from("beds").delete().eq("id", b.id); refresh(); }}
+                      />
                     </div>
                     <div className="mt-3 flex items-center justify-between">
                       <div><div className="text-3xl font-bold tabular-nums">{b.count}</div><div className="text-xs text-muted-foreground">available now</div></div>
@@ -579,10 +684,15 @@ function LabTestsView({ tests, refresh, onBack, canEdit, centerId }: { tests: Te
                 {filtered.map((t) => (
                   <div key={t.id} className="rounded-2xl bg-white border border-border p-4 shadow-[var(--shadow-card)]">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-10 w-10 rounded-xl bg-primary-soft text-primary grid place-items-center"><TestTube className="h-5 w-5" /></div>
-                        <div>
-                          <div className="font-semibold">{t.name}</div>
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="h-10 w-10 rounded-xl bg-primary-soft text-primary grid place-items-center shrink-0"><TestTube className="h-5 w-5" /></div>
+                        <div className="min-w-0 flex-1">
+                          <NameWithActions
+                            name={t.name}
+                            canEdit={canEdit}
+                            onSave={async (v) => { await supabase.from("tests").update({ name: v }).eq("id", t.id); refresh(); }}
+                            onDelete={async () => { await supabase.from("tests").delete().eq("id", t.id); refresh(); }}
+                          />
                           <div className={`text-xs font-medium ${t.available ? "text-accent" : "text-destructive"}`}>{t.available ? "● Available today" : "● Not available"}</div>
                         </div>
                       </div>
@@ -668,7 +778,12 @@ function PathologyView({ rows, refresh, onBack, canEdit, centerId }: { rows: Pat
                     <div className="flex items-center gap-2.5">
                       <div className="h-10 w-10 rounded-xl bg-primary-soft text-primary grid place-items-center"><FlaskConical className="h-5 w-5" /></div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold truncate">{r.test_name}</div>
+                        <NameWithActions
+                          name={r.test_name}
+                          canEdit={canEdit}
+                          onSave={async (v) => { await supabase.from("pathology_labs").update({ test_name: v }).eq("id", r.id); refresh(); }}
+                          onDelete={async () => { await supabase.from("pathology_labs").delete().eq("id", r.id); refresh(); }}
+                        />
                         <div className="text-xs text-muted-foreground">TAT: {r.turnaround_time_hours}h</div>
                       </div>
                     </div>
