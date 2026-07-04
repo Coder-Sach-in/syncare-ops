@@ -775,12 +775,12 @@ function BedsView({ beds, refresh, onBack, canEdit, centerId, hideBack, hideBann
                         onDelete={async () => { await supabase.from("beds").delete().eq("id", b.id); refresh(); }}
                       />
                     </div>
-                    <div className="mt-3 flex items-center justify-between">
+                    <div className="mt-3 flex items-start justify-between gap-2">
                       <div><div className="text-3xl font-bold tabular-nums">{b.count}</div><div className="text-xs text-muted-foreground">available now</div></div>
                       {canEdit && (
-                        <div className="flex flex-col gap-1.5">
-                          <button onClick={() => change(b.id, b.count, 1)} className="h-9 w-9 rounded-lg bg-accent-soft text-accent grid place-items-center hover:bg-accent hover:text-accent-foreground transition"><Plus className="h-4 w-4" /></button>
-                          <button onClick={() => change(b.id, b.count, -1)} className="h-9 w-9 rounded-lg bg-destructive-soft text-destructive grid place-items-center hover:bg-destructive hover:text-destructive-foreground transition"><Minus className="h-4 w-4" /></button>
+                        <div className="flex-1 max-w-[180px]">
+                          <QtyStepper current={b.count} layout="col" addLabel="Add beds" subLabel="Remove beds"
+                            onApply={(delta) => change(b.id, b.count, delta)} />
                         </div>
                       )}
                     </div>
