@@ -1345,10 +1345,19 @@ function computeEfficiency(cId: string, meds: Med[], staff: StaffRow[], beds: Be
   const cMeds = meds.filter((m) => m.center_id === cId);
   const cStaff = staff.filter((s) => s.center_id === cId);
   const cBeds = beds.filter((b) => b.center_id === cId);
-  const stockScore = cMeds.length ? (cMeds.filter((m) => m.stock > LOW_STOCK).length / cMeds.length) * 100 : 100;
-  const attendanceScore = cStaff.length ? (cStaff.filter((s) => s.status === "in").length / cStaff.length) * 100 : 100;
-  const bedScore = cBeds.length ? (cBeds.filter((b) => b.available).length / cBeds.length) * 100 : 100;
-  return { stockScore, attendanceScore, bedScore, total: Math.round((stockScore + attendanceScore + bedScore) / 3) };
+  const hasData = cMeds.length > 0 || cStaff.length > 0 || cBeds.length > 0;
+  if (!hasData) {
+    return { hasData: false as const, stockScore: 0, attendanceScore: 0, bedScore: 0, total: 0 };
+  }
+  const parts: number[] = [];
+  const stockScore = cMeds.length ? (cMeds.filter((m) => m.stock > LOW_STOCK).length / cMeds.length) * 100 : 0;
+  const attendanceScore = cStaff.length ? (cStaff.filter((s) => s.status === "in").length / cStaff.length) * 100 : 0;
+  const bedScore = cBeds.length ? (cBeds.filter((b) => b.available).length / cBeds.length) * 100 : 0;
+  if (cMeds.length) parts.push(stockScore);
+  if (cStaff.length) parts.push(attendanceScore);
+  if (cBeds.length) parts.push(bedScore);
+  const total = Math.round(parts.reduce((a, b) => a + b, 0) / parts.length);
+  return { hasData: true as const, stockScore, attendanceScore, bedScore, total };
 }
 
 function AdminDashboard({
