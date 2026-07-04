@@ -14,16 +14,329 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      attendance: {
+        Row: {
+          center_id: string
+          created_at: string
+          id: string
+          last_marked_at: string | null
+          name: string
+          role: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          center_id: string
+          created_at?: string
+          id?: string
+          last_marked_at?: string | null
+          name: string
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          center_id?: string
+          created_at?: string
+          id?: string
+          last_marked_at?: string | null
+          name?: string
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_center_id_fkey"
+            columns: ["center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      beds: {
+        Row: {
+          available: boolean
+          center_id: string
+          count: number
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          available?: boolean
+          center_id: string
+          count?: number
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          available?: boolean
+          center_id?: string
+          count?: number
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beds_center_id_fkey"
+            columns: ["center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      centers: {
+        Row: {
+          center_name: string
+          center_type: Database["public"]["Enums"]["center_type"]
+          created_at: string
+          district: string
+          id: string
+        }
+        Insert: {
+          center_name: string
+          center_type: Database["public"]["Enums"]["center_type"]
+          created_at?: string
+          district?: string
+          id?: string
+        }
+        Update: {
+          center_name?: string
+          center_type?: Database["public"]["Enums"]["center_type"]
+          created_at?: string
+          district?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      pathology_labs: {
+        Row: {
+          center_id: string
+          created_at: string
+          id: string
+          report_status: string
+          sample_status: string
+          test_name: string
+          turnaround_time_hours: number
+          updated_at: string
+        }
+        Insert: {
+          center_id: string
+          created_at?: string
+          id?: string
+          report_status?: string
+          sample_status?: string
+          test_name: string
+          turnaround_time_hours?: number
+          updated_at?: string
+        }
+        Update: {
+          center_id?: string
+          created_at?: string
+          id?: string
+          report_status?: string
+          sample_status?: string
+          test_name?: string
+          turnaround_time_hours?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pathology_labs_center_id_fkey"
+            columns: ["center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          center_id: string | null
+          created_at: string
+          full_name: string
+          id: string
+        }
+        Insert: {
+          center_id?: string | null
+          created_at?: string
+          full_name?: string
+          id: string
+        }
+        Update: {
+          center_id?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_center_id_fkey"
+            columns: ["center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requisition_requests: {
+        Row: {
+          center_id: string
+          id: string
+          item_name: string
+          item_type: string
+          quantity_requested: number
+          requested_at: string
+          requested_by: string | null
+          resolved_at: string | null
+          status: string
+        }
+        Insert: {
+          center_id: string
+          id?: string
+          item_name: string
+          item_type: string
+          quantity_requested?: number
+          requested_at?: string
+          requested_by?: string | null
+          resolved_at?: string | null
+          status?: string
+        }
+        Update: {
+          center_id?: string
+          id?: string
+          item_name?: string
+          item_type?: string
+          quantity_requested?: number
+          requested_at?: string
+          requested_by?: string | null
+          resolved_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requisition_requests_center_id_fkey"
+            columns: ["center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock: {
+        Row: {
+          center_id: string
+          created_at: string
+          id: string
+          name: string
+          stock: number
+          updated_at: string
+        }
+        Insert: {
+          center_id: string
+          created_at?: string
+          id?: string
+          name: string
+          stock?: number
+          updated_at?: string
+        }
+        Update: {
+          center_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          stock?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_center_id_fkey"
+            columns: ["center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tests: {
+        Row: {
+          available: boolean
+          center_id: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          available?: boolean
+          center_id: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          available?: boolean
+          center_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tests_center_id_fkey"
+            columns: ["center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_center_id: { Args: never; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_district_admin: { Args: never; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "district_admin" | "center_staff"
+      center_type: "PHC" | "CHC"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +463,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["district_admin", "center_staff"],
+      center_type: ["PHC", "CHC"],
+    },
   },
 } as const
