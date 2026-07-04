@@ -1334,7 +1334,7 @@ function AdminDashboard({
         </div>
       )}
 
-      <Section id="overview" title="District overview" subtitle="Ujjain · 5 centers · live health status" icon={Building2}>
+      <Section id="overview" title="District overview" subtitle={`Ujjain · ${centers.length} ${centers.length === 1 ? "center" : "centers"} · live health status`} icon={Building2}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {withStatus.map(({ center, status, eff }) => {
             const t = tone(status.level);
