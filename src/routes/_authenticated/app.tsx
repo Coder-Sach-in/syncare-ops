@@ -1441,31 +1441,48 @@ function AdminDashboard({
 
       <Section id="scorecard" title="Performance scorecard" subtitle="Ranked by efficiency (stock + attendance + beds)" icon={Activity}>
         <SubCard title="Center rankings" tone="default" icon={Activity}>
-          <ul className="space-y-2">
-            {ranked.map((r, idx) => (
-              <li key={r.center.id} className="flex items-center gap-3">
-                <span className="h-7 w-7 rounded-full bg-primary-soft text-primary grid place-items-center text-xs font-bold shrink-0">{idx + 1}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-sm truncate">{r.center.center_name} {r.center.center_type}</span>
-                    <span className="text-sm font-bold tabular-nums">{r.eff.total}%</span>
+          {ranked.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No centers have operational data yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {ranked.map((r, idx) => (
+                <li key={r.center.id} className="flex items-center gap-3">
+                  <span className="h-7 w-7 rounded-full bg-primary-soft text-primary grid place-items-center text-xs font-bold shrink-0">{idx + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-sm truncate">{r.center.center_name} {r.center.center_type}</span>
+                      <span className="text-sm font-bold tabular-nums">{r.eff.total}%</span>
+                    </div>
+                    <div className="mt-1 h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full ${r.eff.total >= 75 ? "bg-accent" : r.eff.total >= 50 ? "bg-amber-500" : "bg-destructive"}`}
+                        style={{ width: `${r.eff.total}%` }}
+                      />
+                    </div>
+                    <div className="mt-1 flex gap-3 text-[11px] text-muted-foreground">
+                      <span>Stock {Math.round(r.eff.stockScore)}%</span>
+                      <span>Attendance {Math.round(r.eff.attendanceScore)}%</span>
+                      <span>Beds {Math.round(r.eff.bedScore)}%</span>
+                    </div>
                   </div>
-                  <div className="mt-1 h-2 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={`h-full ${r.eff.total >= 75 ? "bg-accent" : r.eff.total >= 50 ? "bg-amber-500" : "bg-destructive"}`}
-                      style={{ width: `${r.eff.total}%` }}
-                    />
-                  </div>
-                  <div className="mt-1 flex gap-3 text-[11px] text-muted-foreground">
-                    <span>Stock {Math.round(r.eff.stockScore)}%</span>
-                    <span>Attendance {Math.round(r.eff.attendanceScore)}%</span>
-                    <span>Beds {Math.round(r.eff.bedScore)}%</span>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          )}
         </SubCard>
+        {withoutData.length > 0 && (
+          <SubCard title={`Not yet operational (${withoutData.length})`} tone="default" icon={Building2}>
+            <ul className="space-y-1.5">
+              {withoutData.map((r) => (
+                <li key={r.center.id} className="flex items-center justify-between text-sm">
+                  <span className="font-medium truncate">{r.center.center_name} {r.center.center_type}</span>
+                  <span className="text-xs text-muted-foreground italic">No data yet</span>
+                </li>
+              ))}
+            </ul>
+          </SubCard>
+        )}
+      </Section>
       </Section>
 
       <Section
