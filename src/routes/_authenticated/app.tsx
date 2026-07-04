@@ -813,7 +813,7 @@ function LabTestsView({ tests, refresh, onBack, canEdit, centerId, hideBack }: {
 /* ================================================================
    PATHOLOGY
    ================================================================ */
-function PathologyView({ rows, refresh, onBack, canEdit, centerId }: { rows: PathRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null }) {
+function PathologyView({ rows, refresh, onBack, canEdit, centerId, hideBack }: { rows: PathRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [newTat, setNewTat] = useState("");
