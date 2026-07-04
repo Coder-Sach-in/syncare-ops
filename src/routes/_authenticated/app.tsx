@@ -1483,7 +1483,6 @@ function AdminDashboard({
           </SubCard>
         )}
       </Section>
-      </Section>
 
       <Section
         id="approvals"
