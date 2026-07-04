@@ -1,9 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+// ~5 MB base64 cap (base64 is ~1.37x raw bytes)
+const MAX_AUDIO_BASE64_LEN = 7_000_000;
 
 export const transcribeAudio = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => {
     const d = data as { audioBase64?: string; mimeType?: string };
     if (!d?.audioBase64 || typeof d.audioBase64 !== "string") throw new Error("audioBase64 required");
+    if (d.audioBase64.length > MAX_AUDIO_BASE64_LEN) throw new Error("audio payload too large");
     return { audioBase64: d.audioBase64, mimeType: d.mimeType || "audio/webm" };
   })
   .handler(async ({ data }) => {
