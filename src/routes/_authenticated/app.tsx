@@ -262,9 +262,9 @@ function NameWithActions({
 /* ================================================================
    MEDICINE
    ================================================================ */
-function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest }: {
+function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest, hideBack }: {
   meds: Med[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null;
-  onRequest: () => void;
+  onRequest: () => void; hideBack?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
@@ -293,7 +293,7 @@ function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest }: {
 
   return (
     <div className="space-y-5">
-      <BackBar label="Medicine Stock" onBack={onBack} />
+      {!hideBack && <BackBar label="Medicine Stock" onBack={onBack} />}
       <Section id="stock" title="Medicine Stock" subtitle="Alerts first, then update or add new" icon={Pill}
         actions={canEdit ? (
           <button onClick={onRequest} className="h-11 px-4 rounded-xl bg-accent text-accent-foreground font-semibold text-sm inline-flex items-center gap-2 hover:brightness-110 active:scale-95 transition">
@@ -538,7 +538,7 @@ function VoiceStock({ meds, refresh }: { meds: Med[]; refresh: () => void }) {
 /* ================================================================
    ATTENDANCE
    ================================================================ */
-function AttendanceView({ staff, refresh, onBack, canEdit, centerId }: { staff: StaffRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null }) {
+function AttendanceView({ staff, refresh, onBack, canEdit, centerId, hideBack }: { staff: StaffRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
@@ -563,7 +563,7 @@ function AttendanceView({ staff, refresh, onBack, canEdit, centerId }: { staff: 
 
   return (
     <div className="space-y-5">
-      <BackBar label="Staff Attendance" onBack={onBack} />
+      {!hideBack && <BackBar label="Staff Attendance" onBack={onBack} />}
       <Section id="attendance" title="Doctor & Nurse Attendance" subtitle="Alerts first, then mark or add staff" icon={Users}>
         <div className="space-y-5">
           {!canEdit && <ReadOnlyBanner />}
@@ -644,7 +644,7 @@ function AttendanceView({ staff, refresh, onBack, canEdit, centerId }: { staff: 
 /* ================================================================
    BEDS
    ================================================================ */
-function BedsView({ beds, refresh, onBack, canEdit, centerId }: { beds: BedRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null }) {
+function BedsView({ beds, refresh, onBack, canEdit, centerId, hideBack }: { beds: BedRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [newCount, setNewCount] = useState("");
@@ -661,7 +661,7 @@ function BedsView({ beds, refresh, onBack, canEdit, centerId }: { beds: BedRow[]
   };
   return (
     <div className="space-y-5">
-      <BackBar label="Bed Availability" onBack={onBack} />
+      {!hideBack && <BackBar label="Bed Availability" onBack={onBack} />}
       <Section id="beds" title="Bed Availability" subtitle="Alerts first, then update or add wards" icon={BedDouble}>
         <div className="space-y-5">
           {!canEdit && <ReadOnlyBanner />}
@@ -734,7 +734,7 @@ function BedsView({ beds, refresh, onBack, canEdit, centerId }: { beds: BedRow[]
 /* ================================================================
    TESTS
    ================================================================ */
-function LabTestsView({ tests, refresh, onBack, canEdit, centerId }: { tests: TestRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null }) {
+function LabTestsView({ tests, refresh, onBack, canEdit, centerId, hideBack }: { tests: TestRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean }) {
   const [query, setQuery] = useState(""); const [newName, setNewName] = useState("");
   const unavail = tests.filter((t) => !t.available);
   const setAvail = async (id: string, val: boolean) => { await supabase.from("tests").update({ available: val }).eq("id", id); refresh(); };
@@ -746,7 +746,7 @@ function LabTestsView({ tests, refresh, onBack, canEdit, centerId }: { tests: Te
   };
   return (
     <div className="space-y-5">
-      <BackBar label="Lab Tests" onBack={onBack} />
+      {!hideBack && <BackBar label="Lab Tests" onBack={onBack} />}
       <Section id="tests" title="Lab Tests" subtitle="Alerts first, then update or add tests" icon={TestTube}>
         <div className="space-y-5">
           {!canEdit && <ReadOnlyBanner />}
@@ -813,7 +813,7 @@ function LabTestsView({ tests, refresh, onBack, canEdit, centerId }: { tests: Te
 /* ================================================================
    PATHOLOGY
    ================================================================ */
-function PathologyView({ rows, refresh, onBack, canEdit, centerId }: { rows: PathRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null }) {
+function PathologyView({ rows, refresh, onBack, canEdit, centerId, hideBack }: { rows: PathRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [newTat, setNewTat] = useState("");
@@ -831,7 +831,7 @@ function PathologyView({ rows, refresh, onBack, canEdit, centerId }: { rows: Pat
 
   return (
     <div className="space-y-5">
-      <BackBar label="Pathology Lab" onBack={onBack} />
+      {!hideBack && <BackBar label="Pathology Lab" onBack={onBack} />}
       <Section id="pathology" title="Pathology Lab" subtitle="Sample collection & report turnaround" icon={FlaskConical}>
         <div className="space-y-5">
           {!canEdit && <ReadOnlyBanner />}
@@ -1345,10 +1345,19 @@ function computeEfficiency(cId: string, meds: Med[], staff: StaffRow[], beds: Be
   const cMeds = meds.filter((m) => m.center_id === cId);
   const cStaff = staff.filter((s) => s.center_id === cId);
   const cBeds = beds.filter((b) => b.center_id === cId);
-  const stockScore = cMeds.length ? (cMeds.filter((m) => m.stock > LOW_STOCK).length / cMeds.length) * 100 : 100;
-  const attendanceScore = cStaff.length ? (cStaff.filter((s) => s.status === "in").length / cStaff.length) * 100 : 100;
-  const bedScore = cBeds.length ? (cBeds.filter((b) => b.available).length / cBeds.length) * 100 : 100;
-  return { stockScore, attendanceScore, bedScore, total: Math.round((stockScore + attendanceScore + bedScore) / 3) };
+  const hasData = cMeds.length > 0 || cStaff.length > 0 || cBeds.length > 0;
+  if (!hasData) {
+    return { hasData: false as const, stockScore: 0, attendanceScore: 0, bedScore: 0, total: 0 };
+  }
+  const parts: number[] = [];
+  const stockScore = cMeds.length ? (cMeds.filter((m) => m.stock > LOW_STOCK).length / cMeds.length) * 100 : 0;
+  const attendanceScore = cStaff.length ? (cStaff.filter((s) => s.status === "in").length / cStaff.length) * 100 : 0;
+  const bedScore = cBeds.length ? (cBeds.filter((b) => b.available).length / cBeds.length) * 100 : 0;
+  if (cMeds.length) parts.push(stockScore);
+  if (cStaff.length) parts.push(attendanceScore);
+  if (cBeds.length) parts.push(bedScore);
+  const total = Math.round(parts.reduce((a, b) => a + b, 0) / parts.length);
+  return { hasData: true as const, stockScore, attendanceScore, bedScore, total };
 }
 
 function AdminDashboard({
@@ -1363,7 +1372,9 @@ function AdminDashboard({
     eff: computeEfficiency(c.id, meds, staff, beds),
   }));
   const redCenters = withStatus.filter((w) => w.status.level === "red");
-  const ranked = [...withStatus].sort((a, b) => b.eff.total - a.eff.total);
+  const withData = withStatus.filter((w) => w.eff.hasData);
+  const withoutData = withStatus.filter((w) => !w.eff.hasData);
+  const ranked = [...withData].sort((a, b) => b.eff.total - a.eff.total);
   const pendingReqs = reqs.filter((r) => r.status === "Pending");
 
   const tone = (lvl: CenterStatus["level"]) =>
@@ -1408,13 +1419,19 @@ function AdminDashboard({
                   </span>
                 </div>
                 <div className={`mt-3 text-xs font-semibold px-2.5 py-1.5 rounded-lg ${t.chip} line-clamp-2`}>{status.reason}</div>
-                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Efficiency</span>
-                  <span className="font-bold text-foreground tabular-nums">{eff.total}%</span>
-                </div>
-                <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full bg-primary" style={{ width: `${eff.total}%` }} />
-                </div>
+                {eff.hasData ? (
+                  <>
+                    <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Efficiency</span>
+                      <span className="font-bold text-foreground tabular-nums">{eff.total}%</span>
+                    </div>
+                    <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-primary" style={{ width: `${eff.total}%` }} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-3 text-xs text-muted-foreground italic">No data yet</div>
+                )}
                 <div className="mt-3 text-[11px] font-semibold text-primary">Open drill-down →</div>
               </button>
             );
@@ -1424,31 +1441,47 @@ function AdminDashboard({
 
       <Section id="scorecard" title="Performance scorecard" subtitle="Ranked by efficiency (stock + attendance + beds)" icon={Activity}>
         <SubCard title="Center rankings" tone="default" icon={Activity}>
-          <ul className="space-y-2">
-            {ranked.map((r, idx) => (
-              <li key={r.center.id} className="flex items-center gap-3">
-                <span className="h-7 w-7 rounded-full bg-primary-soft text-primary grid place-items-center text-xs font-bold shrink-0">{idx + 1}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-sm truncate">{r.center.center_name} {r.center.center_type}</span>
-                    <span className="text-sm font-bold tabular-nums">{r.eff.total}%</span>
+          {ranked.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No centers have operational data yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {ranked.map((r, idx) => (
+                <li key={r.center.id} className="flex items-center gap-3">
+                  <span className="h-7 w-7 rounded-full bg-primary-soft text-primary grid place-items-center text-xs font-bold shrink-0">{idx + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-sm truncate">{r.center.center_name} {r.center.center_type}</span>
+                      <span className="text-sm font-bold tabular-nums">{r.eff.total}%</span>
+                    </div>
+                    <div className="mt-1 h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full ${r.eff.total >= 75 ? "bg-accent" : r.eff.total >= 50 ? "bg-amber-500" : "bg-destructive"}`}
+                        style={{ width: `${r.eff.total}%` }}
+                      />
+                    </div>
+                    <div className="mt-1 flex gap-3 text-[11px] text-muted-foreground">
+                      <span>Stock {Math.round(r.eff.stockScore)}%</span>
+                      <span>Attendance {Math.round(r.eff.attendanceScore)}%</span>
+                      <span>Beds {Math.round(r.eff.bedScore)}%</span>
+                    </div>
                   </div>
-                  <div className="mt-1 h-2 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={`h-full ${r.eff.total >= 75 ? "bg-accent" : r.eff.total >= 50 ? "bg-amber-500" : "bg-destructive"}`}
-                      style={{ width: `${r.eff.total}%` }}
-                    />
-                  </div>
-                  <div className="mt-1 flex gap-3 text-[11px] text-muted-foreground">
-                    <span>Stock {Math.round(r.eff.stockScore)}%</span>
-                    <span>Attendance {Math.round(r.eff.attendanceScore)}%</span>
-                    <span>Beds {Math.round(r.eff.bedScore)}%</span>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          )}
         </SubCard>
+        {withoutData.length > 0 && (
+          <SubCard title={`Not yet operational (${withoutData.length})`} tone="default" icon={Building2}>
+            <ul className="space-y-1.5">
+              {withoutData.map((r) => (
+                <li key={r.center.id} className="flex items-center justify-between text-sm">
+                  <span className="font-medium truncate">{r.center.center_name} {r.center.center_type}</span>
+                  <span className="text-xs text-muted-foreground italic">No data yet</span>
+                </li>
+              ))}
+            </ul>
+          </SubCard>
+        )}
       </Section>
 
       <Section
@@ -1505,11 +1538,11 @@ function CenterDrillDown({
     <div className="space-y-6">
       <BackBar label={`${center.center_name} ${center.center_type} · drill-down`} onBack={onBack} />
       <ReadOnlyBanner />
-      <MedicineView meds={cMeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} onRequest={noop} />
-      <AttendanceView staff={cStaff} refresh={noop} onBack={onBack} canEdit={false} centerId={null} />
-      <BedsView beds={cBeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} />
-      <LabTestsView tests={cTests} refresh={noop} onBack={onBack} canEdit={false} centerId={null} />
-      <PathologyView rows={cPath} refresh={noop} onBack={onBack} canEdit={false} centerId={null} />
+      <MedicineView meds={cMeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} onRequest={noop} hideBack />
+      <AttendanceView staff={cStaff} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack />
+      <BedsView beds={cBeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack />
+      <LabTestsView tests={cTests} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack />
+      <PathologyView rows={cPath} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack />
     </div>
   );
 }
