@@ -1,11 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+const MAX_TRANSCRIPT_LEN = 1000;
+const MAX_MEDICINES = 500;
+const MAX_MEDICINE_NAME_LEN = 200;
 
 export const parseVoiceCommand = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => {
     const d = data as { transcript?: string; medicines?: string[] };
     if (!d?.transcript || typeof d.transcript !== "string") throw new Error("transcript required");
+    if (d.transcript.length > MAX_TRANSCRIPT_LEN) throw new Error("transcript too long");
     if (!Array.isArray(d.medicines)) throw new Error("medicines required");
-    return { transcript: d.transcript, medicines: d.medicines.map(String) };
+    if (d.medicines.length > MAX_MEDICINES) throw new Error("too many medicines");
+    const medicines = d.medicines.map((m) => String(m).slice(0, MAX_MEDICINE_NAME_LEN));
+    return { transcript: d.transcript, medicines };
   })
   .handler(async ({ data }) => {
     const apiKey = process.env.LOVABLE_API_KEY;
