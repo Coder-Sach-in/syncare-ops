@@ -337,10 +337,15 @@ function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest }: {
                   return (
                     <div key={m.id} className="rounded-2xl bg-white border border-border p-4 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <div className="h-10 w-10 rounded-xl bg-primary-soft grid place-items-center"><Pill className="h-5 w-5 text-primary" /></div>
-                          <div>
-                            <div className="font-semibold">{m.name}</div>
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="h-10 w-10 rounded-xl bg-primary-soft grid place-items-center shrink-0"><Pill className="h-5 w-5 text-primary" /></div>
+                          <div className="min-w-0 flex-1">
+                            <NameWithActions
+                              name={m.name}
+                              canEdit={canEdit}
+                              onSave={async (v) => { await supabase.from("stock").update({ name: v }).eq("id", m.id); refresh(); }}
+                              onDelete={async () => { await supabase.from("stock").delete().eq("id", m.id); refresh(); }}
+                            />
                             <div className={`text-xs font-medium ${low ? "text-destructive" : "text-muted-foreground"}`}>{low ? "Low stock" : "In stock"}</div>
                           </div>
                         </div>
