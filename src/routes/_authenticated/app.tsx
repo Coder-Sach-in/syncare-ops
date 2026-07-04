@@ -1505,11 +1505,11 @@ function CenterDrillDown({
     <div className="space-y-6">
       <BackBar label={`${center.center_name} ${center.center_type} · drill-down`} onBack={onBack} />
       <ReadOnlyBanner />
-      <MedicineView meds={cMeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} onRequest={noop} />
-      <AttendanceView staff={cStaff} refresh={noop} onBack={onBack} canEdit={false} centerId={null} />
-      <BedsView beds={cBeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} />
-      <LabTestsView tests={cTests} refresh={noop} onBack={onBack} canEdit={false} centerId={null} />
-      <PathologyView rows={cPath} refresh={noop} onBack={onBack} canEdit={false} centerId={null} />
+      <MedicineView meds={cMeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} onRequest={noop} hideBack />
+      <AttendanceView staff={cStaff} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack />
+      <BedsView beds={cBeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack />
+      <LabTestsView tests={cTests} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack />
+      <PathologyView rows={cPath} refresh={noop} onBack={onBack} canEdit={false} centerId={null} hideBack />
     </div>
   );
 }
