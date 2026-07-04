@@ -1154,16 +1154,21 @@ function RequisitionsView({ rows, centers, refresh, onBack, isAdmin }: { rows: R
    BOTTOM NAV & DASHBOARD
    ================================================================ */
 function BottomNav({ active, onSelect, isAdmin }: { active: string; onSelect: (id: string) => void; isAdmin: boolean }) {
-  const NAV = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "stock", label: "Stock", icon: Package },
-    { id: "attendance", label: "Staff", icon: Users },
-    { id: "beds", label: "Beds", icon: BedDouble },
-    { id: "tests", label: "Tests", icon: TestTube },
-    { id: "pathology", label: "Pathology", icon: FlaskConical },
-    { id: "requisitions", label: "Requests", icon: ClipboardList },
-    ...(isAdmin ? [{ id: "manage", label: "Manage", icon: Building2 }] : []),
-  ];
+  const NAV = isAdmin
+    ? [
+        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { id: "requisitions", label: "Requests", icon: ClipboardList },
+        { id: "manage", label: "Manage", icon: Building2 },
+      ]
+    : [
+        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { id: "stock", label: "Stock", icon: Package },
+        { id: "attendance", label: "Staff", icon: Users },
+        { id: "beds", label: "Beds", icon: BedDouble },
+        { id: "tests", label: "Tests", icon: TestTube },
+        { id: "pathology", label: "Pathology", icon: FlaskConical },
+        { id: "requisitions", label: "Requests", icon: ClipboardList },
+      ];
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t border-border">
       <div className={`mx-auto max-w-7xl px-2 grid`} style={{ gridTemplateColumns: `repeat(${NAV.length}, minmax(0, 1fr))` }}>
