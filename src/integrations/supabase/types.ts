@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_insights: {
+        Row: {
+          center_id: string | null
+          description: string
+          generated_at: string
+          id: string
+          insight_type: string
+          related_center_id: string | null
+          severity: string
+          title: string
+        }
+        Insert: {
+          center_id?: string | null
+          description: string
+          generated_at?: string
+          id?: string
+          insight_type: string
+          related_center_id?: string | null
+          severity: string
+          title: string
+        }
+        Update: {
+          center_id?: string | null
+          description?: string
+          generated_at?: string
+          id?: string
+          insight_type?: string
+          related_center_id?: string | null
+          severity?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_insights_center_id_fkey"
+            columns: ["center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_related_center_id_fkey"
+            columns: ["related_center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance: {
         Row: {
           center_id: string
