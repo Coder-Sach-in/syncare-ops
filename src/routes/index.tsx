@@ -4,6 +4,7 @@ import {
   Bell, Hospital, Wifi, Mic, MicOff, Minus, Plus, Search,
   LayoutDashboard, Package, Users, BedDouble, TestTube, Settings,
   LogIn, LogOut, CheckCircle2, XCircle, Pill, Activity, PlusCircle,
+  AlertTriangle, ArrowLeft,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -108,6 +109,35 @@ function Section({
   );
 }
 
+/* ---------- Sub-section card (Alerts / Update) ---------- */
+function SubCard({
+  title, tone = "default", icon: Icon, children,
+}: { title: string; tone?: "default" | "alert" | "update"; icon: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
+  const styles =
+    tone === "alert"
+      ? "border-destructive/30 bg-destructive-soft/40"
+      : tone === "update"
+      ? "border-primary/20 bg-primary-soft/30"
+      : "border-border bg-card";
+  const chip =
+    tone === "alert"
+      ? "bg-destructive text-destructive-foreground"
+      : tone === "update"
+      ? "bg-primary text-primary-foreground"
+      : "bg-muted text-foreground";
+  return (
+    <div className={`rounded-2xl border ${styles} p-4 md:p-5 shadow-[var(--shadow-card)]`}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className={`h-8 w-8 rounded-lg grid place-items-center ${chip}`}>
+          <Icon className="h-4 w-4" />
+        </span>
+        <h3 className="font-bold text-sm md:text-base">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 /* ---------- Search input ---------- */
 function SearchBox({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
@@ -132,7 +162,19 @@ function Empty({ msg }: { msg: string }) {
   );
 }
 
-/* ---------- Section 1: Medicine Stock ---------- */
+/* ---------- Back bar ---------- */
+function BackBar({ label, onBack }: { label: string; onBack: () => void }) {
+  return (
+    <button
+      onClick={onBack}
+      className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline mb-2"
+    >
+      <ArrowLeft className="h-4 w-4" /> Back to Dashboard · <span className="text-muted-foreground font-medium">{label}</span>
+    </button>
+  );
+}
+
+/* ---------- Types & initial data ---------- */
 type Med = { name: string; stock: number };
 const INITIAL_MEDS: Med[] = [
   { name: "Paracetamol", stock: 120 },
@@ -146,12 +188,37 @@ const INITIAL_MEDS: Med[] = [
   { name: "Vitamin C", stock: 200 },
 ];
 
-function MedicineStock({ meds, setMeds }: { meds: Med[]; setMeds: React.Dispatch<React.SetStateAction<Med[]>> }) {
+type Staff = { id: string; name: string; role: string; status: "in" | "out" | "idle"; last?: string; initials: string; color: string };
+const INITIAL_STAFF: Staff[] = [
+  { id: "1", name: "Dr. Rajesh Kumar", role: "Physician", status: "idle", initials: "RK", color: "oklch(0.7 0.15 30)" },
+  { id: "2", name: "Dr. Neha Singh",   role: "Pediatrician", status: "idle", initials: "NS", color: "oklch(0.65 0.18 300)" },
+  { id: "3", name: "Nurse Anita",       role: "Head Nurse", status: "idle", initials: "AN", color: "oklch(0.7 0.15 180)" },
+  { id: "4", name: "Nurse Rakesh",      role: "Nurse", status: "idle", initials: "RA", color: "oklch(0.65 0.18 250)" },
+];
+
+type Bed = { name: string; count: number; available: boolean };
+const INITIAL_BEDS: Bed[] = [
+  { name: "General Beds", count: 24, available: true },
+  { name: "ICU Beds", count: 4, available: true },
+  { name: "Emergency Beds", count: 6, available: false },
+  { name: "Maternity Beds", count: 8, available: true },
+];
+
+type LabTest = { name: string; available: boolean };
+const INITIAL_TESTS: LabTest[] = ["Blood Test", "X-Ray", "ECG", "COVID Test", "Urine Test", "CBC"].map((n, i) => ({ name: n, available: i !== 3 }));
+
+/* ================================================================
+   SECTION VIEWS — each one shows: Alerts → Update (with add-new)
+   ================================================================ */
+
+/* ---------- Medicine View ---------- */
+function MedicineView({ meds, setMeds, onBack }: { meds: Med[]; setMeds: React.Dispatch<React.SetStateAction<Med[]>>; onBack: () => void }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [newStock, setNewStock] = useState("");
   const [flash, setFlash] = useState<string | null>(null);
 
+  const lowMeds = meds.filter((m) => m.stock <= 20);
   const filtered = useMemo(
     () => meds.map((m, i) => ({ m, i })).filter(({ m }) => m.name.toLowerCase().includes(query.trim().toLowerCase())),
     [meds, query]
@@ -177,69 +244,94 @@ function MedicineStock({ meds, setMeds }: { meds: Med[]; setMeds: React.Dispatch
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col md:flex-row gap-3">
-        <SearchBox value={query} onChange={setQuery} placeholder="Search medicine by name..." />
-        <form onSubmit={addMed} className="flex-1 flex flex-col sm:flex-row gap-2">
-          <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New medicine name"
-            className="flex-1 h-11 px-3 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
-          <input value={newStock} onChange={(e) => setNewStock(e.target.value)} placeholder="Qty" inputMode="numeric"
-            className="h-11 w-full sm:w-24 px-3 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
-          <button type="submit" className="h-11 px-4 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition">
-            <PlusCircle className="h-5 w-5" /> Add
-          </button>
-        </form>
-      </div>
-      {flash && <div className="text-xs font-semibold text-primary">{flash}</div>}
+    <div className="space-y-5">
+      <BackBar label="Medicine Stock" onBack={onBack} />
+      <Section id="stock" title="Medicine Stock" subtitle="Alerts first, then update or add new" icon={Pill}>
+        <div className="space-y-5">
+          {/* ALERTS */}
+          <SubCard title={`Low Stock Alerts (${lowMeds.length})`} tone="alert" icon={AlertTriangle}>
+            {lowMeds.length === 0 ? (
+              <p className="text-sm text-muted-foreground">All medicines are healthy. No refill needed right now.</p>
+            ) : (
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {lowMeds.map((m) => (
+                  <li key={m.name} className="flex items-center justify-between rounded-xl bg-white border border-destructive/20 px-3 py-2">
+                    <span className="flex items-center gap-2 font-semibold text-sm">
+                      <Pill className="h-4 w-4 text-destructive" /> {m.name}
+                    </span>
+                    <span className="text-sm font-bold text-destructive tabular-nums">{m.stock} left</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SubCard>
 
-      {filtered.length === 0 ? (
-        <Empty msg={`No medicine matches "${query}"`} />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-          {filtered.map(({ m, i }) => {
-            const low = m.stock <= 20;
-            return (
-              <div key={m.name} className="rounded-2xl bg-card border border-border p-4 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-10 w-10 rounded-xl bg-primary-soft grid place-items-center">
-                      <Pill className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <div className="font-semibold">{m.name}</div>
-                      <div className={`text-xs font-medium ${low ? "text-destructive" : "text-muted-foreground"}`}>
-                        {low ? "Low stock" : "In stock"}
+          {/* UPDATE + ADD */}
+          <SubCard title="Update Stock & Add New Medicine" tone="update" icon={PlusCircle}>
+            <div className="flex flex-col md:flex-row gap-3 mb-4">
+              <SearchBox value={query} onChange={setQuery} placeholder="Search medicine by name..." />
+              <form onSubmit={addMed} className="flex-1 flex flex-col sm:flex-row gap-2">
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New medicine name"
+                  className="flex-1 h-11 px-3 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                <input value={newStock} onChange={(e) => setNewStock(e.target.value)} placeholder="Qty" inputMode="numeric"
+                  className="h-11 w-full sm:w-24 px-3 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                <button type="submit" className="h-11 px-4 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition">
+                  <PlusCircle className="h-5 w-5" /> Add
+                </button>
+              </form>
+            </div>
+            {flash && <div className="text-xs font-semibold text-primary mb-2">{flash}</div>}
+
+            {filtered.length === 0 ? (
+              <Empty msg={`No medicine matches "${query}"`} />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                {filtered.map(({ m, i }) => {
+                  const low = m.stock <= 20;
+                  return (
+                    <div key={m.name} className="rounded-2xl bg-white border border-border p-4 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-10 w-10 rounded-xl bg-primary-soft grid place-items-center">
+                            <Pill className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <div className="font-semibold">{m.name}</div>
+                            <div className={`text-xs font-medium ${low ? "text-destructive" : "text-muted-foreground"}`}>
+                              {low ? "Low stock" : "In stock"}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-2xl font-bold tabular-nums">{m.stock}</div>
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <button onClick={() => change(i, -1)}
+                          className="h-12 rounded-xl bg-destructive-soft text-destructive font-bold grid place-items-center hover:bg-destructive hover:text-destructive-foreground active:scale-95 transition">
+                          <Minus className="h-6 w-6" />
+                        </button>
+                        <button onClick={() => change(i, 1)}
+                          className="h-12 rounded-xl bg-accent-soft text-accent font-bold grid place-items-center hover:bg-accent hover:text-accent-foreground active:scale-95 transition">
+                          <Plus className="h-6 w-6" />
+                        </button>
                       </div>
                     </div>
-                  </div>
-                  <div className="text-2xl font-bold tabular-nums">{m.stock}</div>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => change(i, -1)}
-                    className="h-12 rounded-xl bg-destructive-soft text-destructive font-bold grid place-items-center hover:bg-destructive hover:text-destructive-foreground active:scale-95 transition"
-                    aria-label={`Decrease ${m.name}`}
-                  >
-                    <Minus className="h-6 w-6" />
-                  </button>
-                  <button
-                    onClick={() => change(i, 1)}
-                    className="h-12 rounded-xl bg-accent-soft text-accent font-bold grid place-items-center hover:bg-accent hover:text-accent-foreground active:scale-95 transition"
-                    aria-label={`Increase ${m.name}`}
-                  >
-                    <Plus className="h-6 w-6" />
-                  </button>
-                </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            )}
+          </SubCard>
+
+          {/* VOICE */}
+          <SubCard title="Voice Stock Update" tone="default" icon={Mic}>
+            <VoiceStock meds={meds} setMeds={setMeds} />
+          </SubCard>
         </div>
-      )}
+      </Section>
     </div>
   );
 }
 
-/* ---------- Section 2: Voice Stock Update ---------- */
+/* ---------- Voice ---------- */
 type SR = any;
 function VoiceStock({ meds, setMeds }: { meds: Med[]; setMeds: React.Dispatch<React.SetStateAction<Med[]>> }) {
   const [listening, setListening] = useState(false);
@@ -297,206 +389,330 @@ function VoiceStock({ meds, setMeds }: { meds: Med[]; setMeds: React.Dispatch<Re
   };
 
   return (
-    <div className="rounded-2xl bg-card border border-border p-6 shadow-[var(--shadow-card)]">
-      <div className="flex flex-col items-center text-center">
-        <button
-          onClick={toggle}
-          disabled={!supported}
-          className={`relative h-28 w-28 md:h-32 md:w-32 rounded-full grid place-items-center transition-all active:scale-95 ${
-            listening ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground hover:brightness-110"
-          } shadow-[var(--shadow-elevated)] disabled:opacity-50 disabled:cursor-not-allowed`}
-          aria-label="Toggle voice input"
-        >
-          {listening && <span className="absolute inset-0 rounded-full bg-destructive opacity-40 animate-ping" />}
-          {listening ? <MicOff className="h-12 w-12 relative" /> : <Mic className="h-12 w-12 relative" />}
-        </button>
-        <div className="mt-4 min-h-[24px] text-sm font-semibold text-primary">
-          {listening ? "Listening..." : supported ? "Tap the mic and speak" : "Voice not supported in this browser"}
-        </div>
-        <div className="mt-3 w-full max-w-lg rounded-xl bg-muted px-4 py-3 min-h-[52px] text-sm text-foreground">
-          {text || <span className="text-muted-foreground">Say e.g. "Paracetamol plus five", "ORS minus two"</span>}
-        </div>
-        {status && (
-          <div className={`mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${
-            status.ok ? "bg-accent-soft text-accent" : "bg-destructive-soft text-destructive"
-          }`}>
-            {status.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-            {status.msg}
-          </div>
-        )}
+    <div className="flex flex-col items-center text-center">
+      <button
+        onClick={toggle}
+        disabled={!supported}
+        className={`relative h-24 w-24 md:h-28 md:w-28 rounded-full grid place-items-center transition-all active:scale-95 ${
+          listening ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground hover:brightness-110"
+        } shadow-[var(--shadow-elevated)] disabled:opacity-50 disabled:cursor-not-allowed`}
+      >
+        {listening && <span className="absolute inset-0 rounded-full bg-destructive opacity-40 animate-ping" />}
+        {listening ? <MicOff className="h-10 w-10 relative" /> : <Mic className="h-10 w-10 relative" />}
+      </button>
+      <div className="mt-3 text-sm font-semibold text-primary">
+        {listening ? "Listening..." : supported ? "Tap the mic and speak" : "Voice not supported in this browser"}
       </div>
+      <div className="mt-2 w-full max-w-lg rounded-xl bg-white border border-border px-4 py-3 min-h-[48px] text-sm text-foreground">
+        {text || <span className="text-muted-foreground">Say e.g. "Paracetamol plus five", "ORS minus two"</span>}
+      </div>
+      {status && (
+        <div className={`mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${
+          status.ok ? "bg-accent-soft text-accent" : "bg-destructive-soft text-destructive"
+        }`}>
+          {status.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+          {status.msg}
+        </div>
+      )}
     </div>
   );
 }
 
-/* ---------- Section 3: Attendance ---------- */
-type Staff = { id: string; name: string; role: string; status: "in" | "out" | "idle"; last?: string; initials: string; color: string };
-const INITIAL_STAFF: Staff[] = [
-  { id: "1", name: "Dr. Rajesh Kumar", role: "Physician", status: "idle", initials: "RK", color: "oklch(0.7 0.15 30)" },
-  { id: "2", name: "Dr. Neha Singh",   role: "Pediatrician", status: "idle", initials: "NS", color: "oklch(0.65 0.18 300)" },
-  { id: "3", name: "Nurse Anita",       role: "Head Nurse", status: "idle", initials: "AN", color: "oklch(0.7 0.15 180)" },
-  { id: "4", name: "Nurse Rakesh",      role: "Nurse", status: "idle", initials: "RA", color: "oklch(0.65 0.18 250)" },
+/* ---------- Attendance View ---------- */
+const AVATAR_COLORS = [
+  "oklch(0.7 0.15 30)", "oklch(0.65 0.18 300)", "oklch(0.7 0.15 180)",
+  "oklch(0.65 0.18 250)", "oklch(0.7 0.15 120)", "oklch(0.7 0.17 60)",
 ];
-
-function Attendance({ staff, setStaff }: { staff: Staff[]; setStaff: React.Dispatch<React.SetStateAction<Staff[]>> }) {
+function AttendanceView({ staff, setStaff, onBack }: { staff: Staff[]; setStaff: React.Dispatch<React.SetStateAction<Staff[]>>; onBack: () => void }) {
   const [query, setQuery] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newRole, setNewRole] = useState("");
+  const notMarked = staff.filter((s) => s.status === "idle");
+  const checkedOut = staff.filter((s) => s.status === "out");
+
   const set = (id: string, status: "in" | "out") =>
     setStaff((p) => p.map((s) => s.id === id ? { ...s, status, last: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) } : s));
-
 
   const filtered = staff.filter((s) => {
     const q = query.trim().toLowerCase();
     return !q || s.name.toLowerCase().includes(q) || s.role.toLowerCase().includes(q);
   });
 
+  const addStaff = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newName.trim(); const role = newRole.trim() || "Staff";
+    if (!name) return;
+    const initials = name.split(/\s+/).map((s) => s[0]).slice(0, 2).join("").toUpperCase();
+    const color = AVATAR_COLORS[staff.length % AVATAR_COLORS.length];
+    setStaff((p) => [...p, { id: crypto.randomUUID(), name, role, status: "idle", initials, color }]);
+    setNewName(""); setNewRole("");
+  };
+
   return (
-    <div className="space-y-4">
-      <SearchBox value={query} onChange={setQuery} placeholder="Search doctor or nurse by name..." />
-      {filtered.length === 0 ? <Empty msg={`No staff matches "${query}"`} /> : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-          {filtered.map((s) => (
-            <div key={s.id} className="rounded-2xl bg-card border border-border p-4 shadow-[var(--shadow-card)]">
-              <div className="flex items-center gap-3">
-                <div className="h-14 w-14 rounded-full grid place-items-center text-white font-bold text-lg" style={{ backgroundColor: s.color }}>
-                  {s.initials}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold truncate">{s.name}</div>
-                  <div className="text-xs text-muted-foreground">{s.role}</div>
-                  <div className="mt-1 text-xs font-semibold">
-                    {s.status === "in" && <span className="text-accent">🟢 Present {s.last && `· ${s.last}`}</span>}
-                    {s.status === "out" && <span className="text-destructive">🔴 Checked Out {s.last && `· ${s.last}`}</span>}
-                    {s.status === "idle" && <span className="text-muted-foreground">⚪ Not marked</span>}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <button onClick={() => set(s.id, "in")}
-                  className={`h-12 rounded-xl font-semibold flex items-center justify-center gap-2 active:scale-95 transition ${
-                    s.status === "in" ? "bg-accent text-accent-foreground" : "bg-accent-soft text-accent hover:bg-accent hover:text-accent-foreground"
-                  }`}>
-                  <LogIn className="h-5 w-5" /> Check In
+    <div className="space-y-5">
+      <BackBar label="Staff Attendance" onBack={onBack} />
+      <Section id="attendance" title="Doctor & Nurse Attendance" subtitle="Alerts first, then mark or add staff" icon={Users}>
+        <div className="space-y-5">
+          <SubCard title={`Attention Needed (${notMarked.length + checkedOut.length})`} tone="alert" icon={AlertTriangle}>
+            {notMarked.length + checkedOut.length === 0 ? (
+              <p className="text-sm text-muted-foreground">All staff are marked present. Great!</p>
+            ) : (
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {notMarked.map((s) => (
+                  <li key={s.id} className="flex items-center justify-between rounded-xl bg-white border border-destructive/20 px-3 py-2 text-sm">
+                    <span className="font-semibold">{s.name}</span>
+                    <span className="text-xs font-bold text-muted-foreground">Not marked</span>
+                  </li>
+                ))}
+                {checkedOut.map((s) => (
+                  <li key={s.id} className="flex items-center justify-between rounded-xl bg-white border border-destructive/20 px-3 py-2 text-sm">
+                    <span className="font-semibold">{s.name}</span>
+                    <span className="text-xs font-bold text-destructive">Checked out{s.last ? ` · ${s.last}` : ""}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SubCard>
+
+          <SubCard title="Update Attendance & Add New Staff" tone="update" icon={PlusCircle}>
+            <div className="flex flex-col md:flex-row gap-3 mb-4">
+              <SearchBox value={query} onChange={setQuery} placeholder="Search by name or role..." />
+              <form onSubmit={addStaff} className="flex-1 flex flex-col sm:flex-row gap-2">
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New staff name"
+                  className="flex-1 h-11 px-3 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                <input value={newRole} onChange={(e) => setNewRole(e.target.value)} placeholder="Role"
+                  className="h-11 w-full sm:w-36 px-3 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                <button type="submit" className="h-11 px-4 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition">
+                  <PlusCircle className="h-5 w-5" /> Add
                 </button>
-                <button onClick={() => set(s.id, "out")}
-                  className={`h-12 rounded-xl font-semibold flex items-center justify-center gap-2 active:scale-95 transition ${
-                    s.status === "out" ? "bg-destructive text-destructive-foreground" : "bg-destructive-soft text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  }`}>
-                  <LogOut className="h-5 w-5" /> Check Out
-                </button>
-              </div>
+              </form>
             </div>
-          ))}
+            {filtered.length === 0 ? <Empty msg={`No staff matches "${query}"`} /> : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                {filtered.map((s) => (
+                  <div key={s.id} className="rounded-2xl bg-white border border-border p-4 shadow-[var(--shadow-card)]">
+                    <div className="flex items-center gap-3">
+                      <div className="h-14 w-14 rounded-full grid place-items-center text-white font-bold text-lg" style={{ backgroundColor: s.color }}>
+                        {s.initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold truncate">{s.name}</div>
+                        <div className="text-xs text-muted-foreground">{s.role}</div>
+                        <div className="mt-1 text-xs font-semibold">
+                          {s.status === "in" && <span className="text-accent">🟢 Present {s.last && `· ${s.last}`}</span>}
+                          {s.status === "out" && <span className="text-destructive">🔴 Checked Out {s.last && `· ${s.last}`}</span>}
+                          {s.status === "idle" && <span className="text-muted-foreground">⚪ Not marked</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <button onClick={() => set(s.id, "in")}
+                        className={`h-12 rounded-xl font-semibold flex items-center justify-center gap-2 active:scale-95 transition ${
+                          s.status === "in" ? "bg-accent text-accent-foreground" : "bg-accent-soft text-accent hover:bg-accent hover:text-accent-foreground"
+                        }`}>
+                        <LogIn className="h-5 w-5" /> Check In
+                      </button>
+                      <button onClick={() => set(s.id, "out")}
+                        className={`h-12 rounded-xl font-semibold flex items-center justify-center gap-2 active:scale-95 transition ${
+                          s.status === "out" ? "bg-destructive text-destructive-foreground" : "bg-destructive-soft text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        }`}>
+                        <LogOut className="h-5 w-5" /> Check Out
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SubCard>
         </div>
-      )}
+      </Section>
     </div>
   );
 }
 
-/* ---------- Section 4: Beds ---------- */
-type Bed = { name: string; count: number; available: boolean };
-const INITIAL_BEDS: Bed[] = [
-  { name: "General Beds", count: 24, available: true },
-  { name: "ICU Beds", count: 4, available: true },
-  { name: "Emergency Beds", count: 6, available: false },
-  { name: "Maternity Beds", count: 8, available: true },
-];
-function Beds({ beds, setBeds }: { beds: Bed[]; setBeds: React.Dispatch<React.SetStateAction<Bed[]>> }) {
+/* ---------- Beds View ---------- */
+function BedsView({ beds, setBeds, onBack }: { beds: Bed[]; setBeds: React.Dispatch<React.SetStateAction<Bed[]>>; onBack: () => void }) {
   const [query, setQuery] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newCount, setNewCount] = useState("");
+  const alertBeds = beds.filter((b) => !b.available || b.count <= 2);
+
   const change = (i: number, delta: number) =>
     setBeds((p) => p.map((b, idx) => idx === i ? { ...b, count: Math.max(0, b.count + delta) } : b));
   const setAvail = (i: number, val: boolean) =>
     setBeds((p) => p.map((b, idx) => idx === i ? { ...b, available: val } : b));
 
-
   const filtered = beds.map((b, i) => ({ b, i })).filter(({ b }) => b.name.toLowerCase().includes(query.trim().toLowerCase()));
 
+  const addBed = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newName.trim(); const count = Math.max(0, parseInt(newCount || "0", 10) || 0);
+    if (!name || beds.some((b) => b.name.toLowerCase() === name.toLowerCase())) return;
+    setBeds((p) => [...p, { name, count, available: true }]);
+    setNewName(""); setNewCount("");
+  };
+
   return (
-    <div className="space-y-4">
-      <SearchBox value={query} onChange={setQuery} placeholder="Search bed type by name..." />
-      {filtered.length === 0 ? <Empty msg={`No bed type matches "${query}"`} /> : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-          {filtered.map(({ b, i }) => (
-            <div key={b.name} className="rounded-2xl bg-card border border-border p-4 shadow-[var(--shadow-card)]">
-              <div className="flex items-center gap-2.5">
-                <div className={`h-10 w-10 rounded-xl grid place-items-center ${b.available ? "bg-accent-soft text-accent" : "bg-destructive-soft text-destructive"}`}>
-                  <BedDouble className="h-5 w-5" />
-                </div>
-                <div className="font-semibold">{b.name}</div>
-              </div>
-              <div className="mt-3 flex items-center justify-between">
-                <div>
-                  <div className="text-3xl font-bold tabular-nums">{b.count}</div>
-                  <div className="text-xs text-muted-foreground">available now</div>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <button onClick={() => change(i, 1)} className="h-9 w-9 rounded-lg bg-accent-soft text-accent grid place-items-center hover:bg-accent hover:text-accent-foreground transition"><Plus className="h-4 w-4" /></button>
-                  <button onClick={() => change(i, -1)} className="h-9 w-9 rounded-lg bg-destructive-soft text-destructive grid place-items-center hover:bg-destructive hover:text-destructive-foreground transition"><Minus className="h-4 w-4" /></button>
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 p-1 rounded-xl bg-muted">
-                <button onClick={() => setAvail(i, true)}
-                  className={`h-10 rounded-lg text-sm font-semibold transition ${b.available ? "bg-accent text-accent-foreground shadow" : "text-muted-foreground"}`}>
-                  Available
+    <div className="space-y-5">
+      <BackBar label="Bed Availability" onBack={onBack} />
+      <Section id="beds" title="Bed Availability" subtitle="Alerts first, then update or add wards" icon={BedDouble}>
+        <div className="space-y-5">
+          <SubCard title={`Ward Alerts (${alertBeds.length})`} tone="alert" icon={AlertTriangle}>
+            {alertBeds.length === 0 ? (
+              <p className="text-sm text-muted-foreground">All wards have beds available.</p>
+            ) : (
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {alertBeds.map((b) => (
+                  <li key={b.name} className="flex items-center justify-between rounded-xl bg-white border border-destructive/20 px-3 py-2 text-sm">
+                    <span className="font-semibold">{b.name}</span>
+                    <span className="text-xs font-bold text-destructive">
+                      {!b.available ? "Unavailable" : `Only ${b.count} left`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SubCard>
+
+          <SubCard title="Update Beds & Add New Ward" tone="update" icon={PlusCircle}>
+            <div className="flex flex-col md:flex-row gap-3 mb-4">
+              <SearchBox value={query} onChange={setQuery} placeholder="Search bed type..." />
+              <form onSubmit={addBed} className="flex-1 flex flex-col sm:flex-row gap-2">
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New ward name"
+                  className="flex-1 h-11 px-3 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                <input value={newCount} onChange={(e) => setNewCount(e.target.value)} placeholder="Beds" inputMode="numeric"
+                  className="h-11 w-full sm:w-24 px-3 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                <button type="submit" className="h-11 px-4 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition">
+                  <PlusCircle className="h-5 w-5" /> Add
                 </button>
-                <button onClick={() => setAvail(i, false)}
-                  className={`h-10 rounded-lg text-sm font-semibold transition ${!b.available ? "bg-destructive text-destructive-foreground shadow" : "text-muted-foreground"}`}>
-                  Unavailable
-                </button>
-              </div>
+              </form>
             </div>
-          ))}
+            {filtered.length === 0 ? <Empty msg={`No bed type matches "${query}"`} /> : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                {filtered.map(({ b, i }) => (
+                  <div key={b.name} className="rounded-2xl bg-white border border-border p-4 shadow-[var(--shadow-card)]">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`h-10 w-10 rounded-xl grid place-items-center ${b.available ? "bg-accent-soft text-accent" : "bg-destructive-soft text-destructive"}`}>
+                        <BedDouble className="h-5 w-5" />
+                      </div>
+                      <div className="font-semibold">{b.name}</div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <div>
+                        <div className="text-3xl font-bold tabular-nums">{b.count}</div>
+                        <div className="text-xs text-muted-foreground">available now</div>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <button onClick={() => change(i, 1)} className="h-9 w-9 rounded-lg bg-accent-soft text-accent grid place-items-center hover:bg-accent hover:text-accent-foreground transition"><Plus className="h-4 w-4" /></button>
+                        <button onClick={() => change(i, -1)} className="h-9 w-9 rounded-lg bg-destructive-soft text-destructive grid place-items-center hover:bg-destructive hover:text-destructive-foreground transition"><Minus className="h-4 w-4" /></button>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-2 p-1 rounded-xl bg-muted">
+                      <button onClick={() => setAvail(i, true)}
+                        className={`h-10 rounded-lg text-sm font-semibold transition ${b.available ? "bg-accent text-accent-foreground shadow" : "text-muted-foreground"}`}>
+                        Available
+                      </button>
+                      <button onClick={() => setAvail(i, false)}
+                        className={`h-10 rounded-lg text-sm font-semibold transition ${!b.available ? "bg-destructive text-destructive-foreground shadow" : "text-muted-foreground"}`}>
+                        Unavailable
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SubCard>
         </div>
-      )}
+      </Section>
     </div>
   );
 }
 
-/* ---------- Section 5: Lab Tests ---------- */
-type LabTest = { name: string; available: boolean };
-const INITIAL_TESTS: LabTest[] = ["Blood Test", "X-Ray", "ECG", "COVID Test", "Urine Test", "CBC"].map((n, i) => ({ name: n, available: i !== 3 }));
-function LabTests({ tests, setTests }: { tests: LabTest[]; setTests: React.Dispatch<React.SetStateAction<LabTest[]>> }) {
+/* ---------- Lab Tests View ---------- */
+function LabTestsView({ tests, setTests, onBack }: { tests: LabTest[]; setTests: React.Dispatch<React.SetStateAction<LabTest[]>>; onBack: () => void }) {
   const [query, setQuery] = useState("");
+  const [newName, setNewName] = useState("");
+  const unavail = tests.filter((t) => !t.available);
+
   const setAvail = (i: number, val: boolean) =>
     setTests((p) => p.map((t, idx) => idx === i ? { ...t, available: val } : t));
 
-
   const filtered = tests.map((t, i) => ({ t, i })).filter(({ t }) => t.name.toLowerCase().includes(query.trim().toLowerCase()));
 
+  const addTest = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newName.trim();
+    if (!name || tests.some((t) => t.name.toLowerCase() === name.toLowerCase())) return;
+    setTests((p) => [...p, { name, available: true }]);
+    setNewName("");
+  };
+
   return (
-    <div className="space-y-4">
-      <SearchBox value={query} onChange={setQuery} placeholder="Search lab test by name..." />
-      {filtered.length === 0 ? <Empty msg={`No lab test matches "${query}"`} /> : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-          {filtered.map(({ t, i }) => (
-            <div key={t.name} className="rounded-2xl bg-card border border-border p-4 shadow-[var(--shadow-card)]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-10 w-10 rounded-xl bg-primary-soft text-primary grid place-items-center">
-                    <TestTube className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="font-semibold">{t.name}</div>
-                    <div className={`text-xs font-medium ${t.available ? "text-accent" : "text-destructive"}`}>
-                      {t.available ? "● Available today" : "● Not available"}
+    <div className="space-y-5">
+      <BackBar label="Lab Tests" onBack={onBack} />
+      <Section id="tests" title="Lab Tests" subtitle="Alerts first, then update or add tests" icon={TestTube}>
+        <div className="space-y-5">
+          <SubCard title={`Tests Unavailable (${unavail.length})`} tone="alert" icon={AlertTriangle}>
+            {unavail.length === 0 ? (
+              <p className="text-sm text-muted-foreground">All tests are available today.</p>
+            ) : (
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {unavail.map((t) => (
+                  <li key={t.name} className="flex items-center justify-between rounded-xl bg-white border border-destructive/20 px-3 py-2 text-sm">
+                    <span className="font-semibold">{t.name}</span>
+                    <span className="text-xs font-bold text-destructive">Not available</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SubCard>
+
+          <SubCard title="Update Tests & Add New Test" tone="update" icon={PlusCircle}>
+            <div className="flex flex-col md:flex-row gap-3 mb-4">
+              <SearchBox value={query} onChange={setQuery} placeholder="Search lab test..." />
+              <form onSubmit={addTest} className="flex-1 flex flex-col sm:flex-row gap-2">
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New test name"
+                  className="flex-1 h-11 px-3 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                <button type="submit" className="h-11 px-4 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition">
+                  <PlusCircle className="h-5 w-5" /> Add
+                </button>
+              </form>
+            </div>
+            {filtered.length === 0 ? <Empty msg={`No lab test matches "${query}"`} /> : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                {filtered.map(({ t, i }) => (
+                  <div key={t.name} className="rounded-2xl bg-white border border-border p-4 shadow-[var(--shadow-card)]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-10 w-10 rounded-xl bg-primary-soft text-primary grid place-items-center">
+                          <TestTube className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="font-semibold">{t.name}</div>
+                          <div className={`text-xs font-medium ${t.available ? "text-accent" : "text-destructive"}`}>
+                            {t.available ? "● Available today" : "● Not available"}
+                          </div>
+                        </div>
+                      </div>
+                      <span className={`h-3 w-3 rounded-full ${t.available ? "bg-accent" : "bg-destructive"} shadow ring-4 ${t.available ? "ring-accent-soft" : "ring-destructive-soft"}`} />
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-2 p-1 rounded-xl bg-muted">
+                      <button onClick={() => setAvail(i, true)}
+                        className={`h-10 rounded-lg text-sm font-semibold transition ${t.available ? "bg-accent text-accent-foreground shadow" : "text-muted-foreground"}`}>
+                        Available
+                      </button>
+                      <button onClick={() => setAvail(i, false)}
+                        className={`h-10 rounded-lg text-sm font-semibold transition ${!t.available ? "bg-destructive text-destructive-foreground shadow" : "text-muted-foreground"}`}>
+                        Unavailable
+                      </button>
                     </div>
                   </div>
-                </div>
-                <span className={`h-3 w-3 rounded-full ${t.available ? "bg-accent" : "bg-destructive"} shadow ring-4 ${t.available ? "ring-accent-soft" : "ring-destructive-soft"}`} />
+                ))}
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 p-1 rounded-xl bg-muted">
-                <button onClick={() => setAvail(i, true)}
-                  className={`h-10 rounded-lg text-sm font-semibold transition ${t.available ? "bg-accent text-accent-foreground shadow" : "text-muted-foreground"}`}>
-                  Available
-                </button>
-                <button onClick={() => setAvail(i, false)}
-                  className={`h-10 rounded-lg text-sm font-semibold transition ${!t.available ? "bg-destructive text-destructive-foreground shadow" : "text-muted-foreground"}`}>
-                  Unavailable
-                </button>
-              </div>
-            </div>
-          ))}
+            )}
+          </SubCard>
         </div>
-      )}
+      </Section>
     </div>
   );
 }
@@ -534,7 +750,7 @@ function BottomNav({ active, onSelect }: { active: string; onSelect: (id: string
   );
 }
 
-/* ---------- Dashboard summary ---------- */
+/* ---------- Dashboard summary (home) ---------- */
 type DashProps = {
   meds: Med[]; staff: Staff[]; beds: Bed[]; tests: LabTest[];
   onNavigate: (id: string) => void;
@@ -625,43 +841,40 @@ function Index() {
   const [staff, setStaff] = useState<Staff[]>(INITIAL_STAFF);
   const [beds, setBeds] = useState<Bed[]>(INITIAL_BEDS);
   const [tests, setTests] = useState<LabTest[]>(INITIAL_TESTS);
-  const [active, setActive] = useState("dashboard");
+  const [active, setActive] = useState<string>("dashboard");
 
   const onSelect = (id: string) => {
     setActive(id);
-    if (id === "settings") return;
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  const goHome = () => onSelect("dashboard");
 
   return (
     <div className="min-h-screen bg-background pb-24">
       <Header centerName="Rampur PHC" />
-      <main className="mx-auto max-w-7xl px-4 md:px-6 py-6 space-y-10">
-        <DashboardSummary meds={meds} staff={staff} beds={beds} tests={tests} onNavigate={onSelect} />
-
-        <Section id="stock" title="Medicine Stock" subtitle="Search, add new, and update quickly" icon={Pill}>
-          <MedicineStock meds={meds} setMeds={setMeds} />
-        </Section>
-
-        <Section title="Voice Stock Update" subtitle="Hands-free updates while you work" icon={Mic}>
-          <VoiceStock meds={meds} setMeds={setMeds} />
-        </Section>
-
-        <Section id="attendance" title="Doctor & Nurse Attendance" subtitle="Search by name and mark check-in / out" icon={Users}>
-          <Attendance staff={staff} setStaff={setStaff} />
-        </Section>
-
-        <Section id="beds" title="Bed Availability" subtitle="Search and update bed status" icon={BedDouble}>
-          <Beds beds={beds} setBeds={setBeds} />
-        </Section>
-
-        <Section id="tests" title="Lab Tests" subtitle="Search tests and set today's availability" icon={TestTube}>
-          <LabTests tests={tests} setTests={setTests} />
-        </Section>
+      <main className="mx-auto max-w-7xl px-4 md:px-6 py-6">
+        {active === "dashboard" && (
+          <DashboardSummary meds={meds} staff={staff} beds={beds} tests={tests} onNavigate={onSelect} />
+        )}
+        {active === "stock" && (
+          <MedicineView meds={meds} setMeds={setMeds} onBack={goHome} />
+        )}
+        {active === "attendance" && (
+          <AttendanceView staff={staff} setStaff={setStaff} onBack={goHome} />
+        )}
+        {active === "beds" && (
+          <BedsView beds={beds} setBeds={setBeds} onBack={goHome} />
+        )}
+        {active === "tests" && (
+          <LabTestsView tests={tests} setTests={setTests} onBack={goHome} />
+        )}
+        {active === "settings" && (
+          <Section id="settings" title="Settings" subtitle="Preferences coming soon" icon={Settings}>
+            <Empty msg="Settings will be available in the next update." />
+          </Section>
+        )}
       </main>
       <BottomNav active={active} onSelect={onSelect} />
     </div>
   );
 }
-
