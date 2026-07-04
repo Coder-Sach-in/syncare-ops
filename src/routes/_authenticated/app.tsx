@@ -644,7 +644,7 @@ function AttendanceView({ staff, refresh, onBack, canEdit, centerId, hideBack }:
 /* ================================================================
    BEDS
    ================================================================ */
-function BedsView({ beds, refresh, onBack, canEdit, centerId }: { beds: BedRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null }) {
+function BedsView({ beds, refresh, onBack, canEdit, centerId, hideBack }: { beds: BedRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [newCount, setNewCount] = useState("");
