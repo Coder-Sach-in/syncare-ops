@@ -36,7 +36,7 @@ Return STRICT JSON only. No markdown fences, no preamble, no trailing text. The 
 Cover these categories when the data supports them (skip a category rather than invent):
   a) stockout   — medicines at real risk of running out soon based on current low stock and demand signals. Explain reasoning.
   b) redistribution — one center is short of a medicine while another has surplus of the SAME medicine. Recommend a specific transfer.
-  c) expiry     — medicines nearing expiry that should be used or moved. If no expiry data is provided, skip this category.
+  c) expiry     — for EVERY stock row whose "expiry_date" is within the next 30 days from today (see "today" in the payload), generate ONE "expiry" insight. Severity: "high" if expiry_date is within 7 days OR expiry_date is already in the past; "medium" if within 30 days. Description MUST state the medicine name, the current stock quantity, the exact expiry date, and how many days remain (use negative wording like "expired X days ago" if already past). Recommend either using the stock soon at that center or transferring it to another center that shows active demand for the SAME medicine (low stock, a pending requisition for it, or higher throughput). If no stock row has an expiry_date within 30 days, skip this category entirely — do not invent expiry insights.
   d) footfall   — compare THIS WEEK's total patient footfall vs LAST WEEK's total per center using the "footfall_weekly" summary. Only generate a footfall insight for a center with data in BOTH weeks. If a center lacks 2 weeks of data, SKIP it — do not guess from proxies.
 
 Return between 3 and 12 insights total. Be specific, not generic.`;
