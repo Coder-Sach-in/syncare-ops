@@ -602,8 +602,13 @@ function BedsView({ beds, refresh, onBack, canEdit, centerId }: { beds: BedRow[]
                 {filtered.map((b) => (
                   <div key={b.id} className="rounded-2xl bg-white border border-border p-4 shadow-[var(--shadow-card)]">
                     <div className="flex items-center gap-2.5">
-                      <div className={`h-10 w-10 rounded-xl grid place-items-center ${b.available ? "bg-accent-soft text-accent" : "bg-destructive-soft text-destructive"}`}><BedDouble className="h-5 w-5" /></div>
-                      <div className="font-semibold">{b.name}</div>
+                      <div className={`h-10 w-10 rounded-xl grid place-items-center shrink-0 ${b.available ? "bg-accent-soft text-accent" : "bg-destructive-soft text-destructive"}`}><BedDouble className="h-5 w-5" /></div>
+                      <NameWithActions
+                        name={b.name}
+                        canEdit={canEdit}
+                        onSave={async (v) => { await supabase.from("beds").update({ name: v }).eq("id", b.id); refresh(); }}
+                        onDelete={async () => { await supabase.from("beds").delete().eq("id", b.id); refresh(); }}
+                      />
                     </div>
                     <div className="mt-3 flex items-center justify-between">
                       <div><div className="text-3xl font-bold tabular-nums">{b.count}</div><div className="text-xs text-muted-foreground">available now</div></div>
