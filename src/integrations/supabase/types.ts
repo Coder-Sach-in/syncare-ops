@@ -206,6 +206,41 @@ export type Database = {
           },
         ]
       }
+      patient_footfall: {
+        Row: {
+          center_id: string
+          created_at: string
+          date: string
+          id: string
+          patient_count: number
+          updated_at: string
+        }
+        Insert: {
+          center_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          patient_count?: number
+          updated_at?: string
+        }
+        Update: {
+          center_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          patient_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_footfall_center_id_fkey"
+            columns: ["center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           center_id: string | null
