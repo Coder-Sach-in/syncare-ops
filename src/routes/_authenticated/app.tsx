@@ -1244,6 +1244,225 @@ function Dashboard({ meds, staff, beds, tests, path, reqs, centers, isAdmin, onN
 /* ================================================================
    MAIN PAGE
    ================================================================ */
+/* ================================================================
+   DISTRICT ADMIN DASHBOARD
+   ================================================================ */
+const LOW_STOCK = 20;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+type CenterStatus = { level: "red" | "yellow" | "green"; reason: string };
+
+function computeCenterStatus(cId: string, meds: Med[], staff: StaffRow[], reqs: ReqRow[]): CenterStatus {
+  const now = Date.now();
+  const cMeds = meds.filter((m) => m.center_id === cId);
+  const cStaff = staff.filter((s) => s.center_id === cId);
+  const cReqs = reqs.filter((r) => r.center_id === cId);
+
+  const outOfStock = cMeds.filter((m) => m.stock === 0);
+  const staffUnmarkedDays = (s: StaffRow) => {
+    if (s.status === "in") return 0;
+    if (!s.last_marked_at) return 99;
+    return Math.floor((now - new Date(s.last_marked_at).getTime()) / DAY_MS);
+  };
+  const staffTwoPlus = cStaff.filter((s) => staffUnmarkedDays(s) >= 2);
+  const staleReqs = cReqs.filter((r) => r.status === "Pending" && now - new Date(r.requested_at).getTime() > DAY_MS);
+
+  if (outOfStock.length || staffTwoPlus.length || staleReqs.length) {
+    const reason = outOfStock.length
+      ? `${outOfStock[0].name} out of stock`
+      : staffTwoPlus.length
+        ? `${staffTwoPlus.length} staff unmarked 2+ days`
+        : `${staleReqs.length} requisition${staleReqs.length > 1 ? "s" : ""} unresolved >24h`;
+    return { level: "red", reason };
+  }
+
+  const lowMeds = cMeds.filter((m) => m.stock > 0 && m.stock <= LOW_STOCK);
+  const staffOneDay = cStaff.filter((s) => staffUnmarkedDays(s) >= 1);
+  if (lowMeds.length || staffOneDay.length) {
+    const reason = lowMeds.length
+      ? `${lowMeds[0].name} low (${lowMeds[0].stock} left)`
+      : `${staffOneDay.length} staff unmarked today`;
+    return { level: "yellow", reason };
+  }
+  return { level: "green", reason: "All systems healthy" };
+}
+
+function computeEfficiency(cId: string, meds: Med[], staff: StaffRow[], beds: BedRow[]) {
+  const cMeds = meds.filter((m) => m.center_id === cId);
+  const cStaff = staff.filter((s) => s.center_id === cId);
+  const cBeds = beds.filter((b) => b.center_id === cId);
+  const stockScore = cMeds.length ? (cMeds.filter((m) => m.stock > LOW_STOCK).length / cMeds.length) * 100 : 100;
+  const attendanceScore = cStaff.length ? (cStaff.filter((s) => s.status === "in").length / cStaff.length) * 100 : 100;
+  const bedScore = cBeds.length ? (cBeds.filter((b) => b.available).length / cBeds.length) * 100 : 100;
+  return { stockScore, attendanceScore, bedScore, total: Math.round((stockScore + attendanceScore + bedScore) / 3) };
+}
+
+function AdminDashboard({
+  centers, meds, staff, beds, tests, path, reqs, onDrill, onOpenReqs,
+}: {
+  centers: Center[]; meds: Med[]; staff: StaffRow[]; beds: BedRow[]; tests: TestRow[]; path: PathRow[]; reqs: ReqRow[];
+  onDrill: (centerId: string) => void; onOpenReqs: () => void;
+}) {
+  const withStatus = centers.map((c) => ({
+    center: c,
+    status: computeCenterStatus(c.id, meds, staff, reqs),
+    eff: computeEfficiency(c.id, meds, staff, beds),
+  }));
+  const redCenters = withStatus.filter((w) => w.status.level === "red");
+  const ranked = [...withStatus].sort((a, b) => b.eff.total - a.eff.total);
+  const pendingReqs = reqs.filter((r) => r.status === "Pending");
+
+  const tone = (lvl: CenterStatus["level"]) =>
+    lvl === "red"
+      ? { chip: "bg-destructive-soft text-destructive", ring: "ring-destructive/30", dot: "bg-destructive", label: "Critical" }
+      : lvl === "yellow"
+        ? { chip: "bg-amber-100 text-amber-700", ring: "ring-amber-300/40", dot: "bg-amber-500", label: "Attention" }
+        : { chip: "bg-accent-soft text-accent", ring: "ring-accent/20", dot: "bg-accent", label: "Healthy" };
+
+  return (
+    <div className="space-y-6">
+      {redCenters.length > 0 && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive-soft text-destructive px-4 py-3 flex items-start gap-3 shadow-[var(--shadow-card)]">
+          <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
+          <div className="text-sm">
+            <div className="font-bold">
+              ⚠️ {redCenters.length} center{redCenters.length > 1 ? "s" : ""} need attention:{" "}
+              {redCenters.map((r) => r.center.center_name + " " + r.center.center_type).join(", ")}
+            </div>
+            <div className="text-xs mt-0.5 opacity-80">Tap a red card below to drill into details.</div>
+          </div>
+        </div>
+      )}
+
+      <Section id="overview" title="District overview" subtitle="Ujjain · 5 centers · live health status" icon={Building2}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+          {withStatus.map(({ center, status, eff }) => {
+            const t = tone(status.level);
+            return (
+              <button
+                key={center.id}
+                onClick={() => onDrill(center.id)}
+                className={`text-left rounded-2xl bg-card border border-border p-4 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] hover:-translate-y-0.5 active:scale-[0.98] transition-all ring-1 ${t.ring}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{center.center_type}</div>
+                    <div className="mt-0.5 text-lg font-bold truncate">{center.center_name}</div>
+                  </div>
+                  <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${t.chip}`}>
+                    <span className={`h-2 w-2 rounded-full ${t.dot}`} /> {t.label}
+                  </span>
+                </div>
+                <div className={`mt-3 text-xs font-semibold px-2.5 py-1.5 rounded-lg ${t.chip} line-clamp-2`}>{status.reason}</div>
+                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Efficiency</span>
+                  <span className="font-bold text-foreground tabular-nums">{eff.total}%</span>
+                </div>
+                <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-primary" style={{ width: `${eff.total}%` }} />
+                </div>
+                <div className="mt-3 text-[11px] font-semibold text-primary">Open drill-down →</div>
+              </button>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section id="scorecard" title="Performance scorecard" subtitle="Ranked by efficiency (stock + attendance + beds)" icon={Activity}>
+        <SubCard title="Center rankings" tone="default" icon={Activity}>
+          <ul className="space-y-2">
+            {ranked.map((r, idx) => (
+              <li key={r.center.id} className="flex items-center gap-3">
+                <span className="h-7 w-7 rounded-full bg-primary-soft text-primary grid place-items-center text-xs font-bold shrink-0">{idx + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-sm truncate">{r.center.center_name} {r.center.center_type}</span>
+                    <span className="text-sm font-bold tabular-nums">{r.eff.total}%</span>
+                  </div>
+                  <div className="mt-1 h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-full ${r.eff.total >= 75 ? "bg-accent" : r.eff.total >= 50 ? "bg-amber-500" : "bg-destructive"}`}
+                      style={{ width: `${r.eff.total}%` }}
+                    />
+                  </div>
+                  <div className="mt-1 flex gap-3 text-[11px] text-muted-foreground">
+                    <span>Stock {Math.round(r.eff.stockScore)}%</span>
+                    <span>Attendance {Math.round(r.eff.attendanceScore)}%</span>
+                    <span>Beds {Math.round(r.eff.bedScore)}%</span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </SubCard>
+      </Section>
+
+      <Section
+        id="approvals"
+        title="Requisition approvals"
+        subtitle={`${pendingReqs.length} pending across all centers`}
+        icon={ClipboardList}
+        actions={
+          <button onClick={onOpenReqs} className="h-10 px-4 rounded-xl bg-primary-soft text-primary font-semibold text-sm hover:bg-primary hover:text-primary-foreground transition">
+            Open full panel
+          </button>
+        }
+      >
+        <SubCard title={`Pending (${pendingReqs.length})`} tone={pendingReqs.length ? "alert" : "default"} icon={AlertTriangle}>
+          {pendingReqs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No pending requests. All caught up.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {pendingReqs.slice(0, 6).map((r) => {
+                const cName = centers.find((c) => c.id === r.center_id)?.center_name ?? "—";
+                return (
+                  <div key={r.id} className="rounded-xl bg-white border border-border p-3">
+                    <div className="font-semibold">
+                      {r.item_name} <span className="text-xs text-muted-foreground">× {r.quantity_requested}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground capitalize">{r.item_type.replace("_", " ")} · {cName}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">Requested {new Date(r.requested_at).toLocaleString()}</div>
+                    <button onClick={onOpenReqs} className="mt-2 text-xs font-semibold text-primary hover:underline">
+                      Approve / Reject / Dispatch →
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </SubCard>
+      </Section>
+    </div>
+  );
+}
+
+function CenterDrillDown({
+  center, meds, staff, beds, tests, path, onBack,
+}: {
+  center: Center; meds: Med[]; staff: StaffRow[]; beds: BedRow[]; tests: TestRow[]; path: PathRow[]; onBack: () => void;
+}) {
+  const cMeds = meds.filter((m) => m.center_id === center.id);
+  const cStaff = staff.filter((s) => s.center_id === center.id);
+  const cBeds = beds.filter((b) => b.center_id === center.id);
+  const cTests = tests.filter((t) => t.center_id === center.id);
+  const cPath = path.filter((p) => p.center_id === center.id);
+  const noop = () => {};
+  return (
+    <div className="space-y-6">
+      <BackBar label={`${center.center_name} ${center.center_type} · drill-down`} onBack={onBack} />
+      <ReadOnlyBanner />
+      <MedicineView meds={cMeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} onRequest={noop} />
+      <AttendanceView staff={cStaff} refresh={noop} onBack={onBack} canEdit={false} centerId={null} />
+      <BedsView beds={cBeds} refresh={noop} onBack={onBack} canEdit={false} centerId={null} />
+      <LabTestsView tests={cTests} refresh={noop} onBack={onBack} canEdit={false} centerId={null} />
+      <PathologyView rows={cPath} refresh={noop} onBack={onBack} canEdit={false} centerId={null} />
+    </div>
+  );
+}
+
+/* ================================================================
+   MAIN PAGE
+   ================================================================ */
 function AppPage() {
   const navigate = useNavigate();
   const { profile, role, center, email, loading } = useSession();
@@ -1256,6 +1475,7 @@ function AppPage() {
   const [reqs, setReqs] = useState<ReqRow[]>([]);
   const [centers, setCenters] = useState<Center[]>([]);
   const [reqModal, setReqModal] = useState(false);
+  const [drillCenterId, setDrillCenterId] = useState<string | null>(null);
 
   const isAdmin = role === "district_admin";
   const canEdit = role === "center_staff";
@@ -1283,19 +1503,29 @@ function AppPage() {
   useEffect(() => { if (!loading) refreshAll(); }, [loading, refreshAll]);
 
   const signOut = async () => { await supabase.auth.signOut(); navigate({ to: "/auth" }); };
-  const onSelect = (id: string) => { setActive(id); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const onSelect = (id: string) => { setActive(id); setDrillCenterId(null); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); };
   const goHome = () => onSelect("dashboard");
 
   if (loading) return <div className="min-h-screen grid place-items-center"><div className="text-sm text-muted-foreground">Loading portal...</div></div>;
   if (!profile) return <div className="min-h-screen grid place-items-center p-6 text-center"><div><p className="font-semibold">Your account is missing a profile.</p><button onClick={signOut} className="mt-3 h-10 px-4 rounded-lg bg-primary text-primary-foreground">Sign out</button></div></div>;
 
   const centerId = center?.id ?? null;
+  const drillCenter = drillCenterId ? centers.find((c) => c.id === drillCenterId) ?? null : null;
 
   return (
     <div className="min-h-screen bg-background pb-24">
       <Header centerName={centerName} role={role} email={email} onSignOut={signOut} />
       <main className="mx-auto max-w-7xl px-4 md:px-6 py-6">
-        {active === "dashboard" && <Dashboard meds={meds} staff={staff} beds={beds} tests={tests} path={path} reqs={reqs} centers={centers} isAdmin={isAdmin} onNavigate={onSelect} />}
+        {active === "dashboard" && isAdmin && drillCenter && (
+          <CenterDrillDown center={drillCenter} meds={meds} staff={staff} beds={beds} tests={tests} path={path} onBack={() => setDrillCenterId(null)} />
+        )}
+        {active === "dashboard" && isAdmin && !drillCenter && (
+          <AdminDashboard centers={centers} meds={meds} staff={staff} beds={beds} tests={tests} path={path} reqs={reqs}
+            onDrill={(id) => { setDrillCenterId(id); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            onOpenReqs={() => onSelect("requisitions")}
+          />
+        )}
+        {active === "dashboard" && !isAdmin && <Dashboard meds={meds} staff={staff} beds={beds} tests={tests} path={path} reqs={reqs} centers={centers} isAdmin={isAdmin} onNavigate={onSelect} />}
         {active === "stock" && <MedicineView meds={meds} refresh={refreshAll} onBack={goHome} canEdit={canEdit} centerId={centerId} onRequest={() => setReqModal(true)} />}
         {active === "attendance" && <AttendanceView staff={staff} refresh={refreshAll} onBack={goHome} canEdit={canEdit} centerId={centerId} />}
         {active === "beds" && <BedsView beds={beds} refresh={refreshAll} onBack={goHome} canEdit={canEdit} centerId={centerId} />}
@@ -1314,3 +1544,4 @@ function AppPage() {
     </div>
   );
 }
+
