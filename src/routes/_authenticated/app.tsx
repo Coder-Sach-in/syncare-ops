@@ -418,23 +418,22 @@ function VoiceStock({ meds, refresh }: { meds: Med[]; refresh: () => void }) {
   useEffect(() => { medsRef.current = meds; }, [meds]);
 
   async function parseCommand(raw: string) {
-    const t = raw.toLowerCase().trim().replace(/[.,!?]/g, "");
+    const t = (raw || "").trim();
     if (!t) { setStatus({ ok: false, msg: "Could not understand. Please try again." }); return; }
-    const med = medsRef.current.find((m) => t.includes(m.name.toLowerCase()));
-    if (!med) { setStatus({ ok: false, msg: "Medicine not found." }); return; }
-    const sign = /\b(minus|subtract|remove|less|decrease)\b/.test(t) ? -1
-      : /\b(plus|add|increase|more)\b/.test(t) ? 1 : 0;
-    if (!sign) { setStatus({ ok: false, msg: "Say 'plus' or 'minus' with a number." }); return; }
-    let n = NaN;
-    const digitMatch = t.match(/\d+/);
-    if (digitMatch) n = parseInt(digitMatch[0], 10);
-    if (isNaN(n)) {
-      for (const w of Object.keys(NUMBER_WORDS)) {
-        const re = new RegExp(`\\b${w}\\b`);
-        if (re.test(t)) { n = NUMBER_WORDS[w]; break; }
-      }
+    const list = medsRef.current;
+    let result: { medicine: string | null; action: "add" | "subtract" | null; quantity: number | null };
+    try {
+      result = await parseVoiceCommand({ data: { transcript: t, medicines: list.map((m) => m.name) } });
+    } catch {
+      setStatus({ ok: false, msg: "Could not understand. Please try again." }); return;
     }
-    if (isNaN(n)) { setStatus({ ok: false, msg: "Could not understand. Please try again." }); return; }
+    if (!result.medicine) { setStatus({ ok: false, msg: "Medicine not found." }); return; }
+    const med = list.find((m) => m.name.toLowerCase() === result.medicine!.toLowerCase());
+    if (!med) { setStatus({ ok: false, msg: "Medicine not found." }); return; }
+    if (!result.action) { setStatus({ ok: false, msg: "Say 'plus' or 'minus' with a number." }); return; }
+    if (!result.quantity) { setStatus({ ok: false, msg: "Could not understand. Please try again." }); return; }
+    const sign = result.action === "add" ? 1 : -1;
+    const n = result.quantity;
     const next = Math.max(0, med.stock + sign * n);
     const { error } = await supabase.from("stock").update({ stock: next }).eq("id", med.id);
     if (error) { setStatus({ ok: false, msg: "Failed to update stock." }); return; }
