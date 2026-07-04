@@ -318,6 +318,7 @@ export type Database = {
         Row: {
           center_id: string
           created_at: string
+          expiry_date: string | null
           id: string
           name: string
           stock: number
@@ -326,6 +327,7 @@ export type Database = {
         Insert: {
           center_id: string
           created_at?: string
+          expiry_date?: string | null
           id?: string
           name: string
           stock?: number
@@ -334,6 +336,7 @@ export type Database = {
         Update: {
           center_id?: string
           created_at?: string
+          expiry_date?: string | null
           id?: string
           name?: string
           stock?: number
