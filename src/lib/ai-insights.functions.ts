@@ -36,7 +36,7 @@ Return STRICT JSON only. No markdown fences, no preamble, no trailing text. The 
 Cover these categories when the data supports them (skip a category rather than invent):
   a) stockout   — medicines at real risk of running out soon based on current low stock and demand signals. Explain reasoning.
   b) redistribution — one center is short of a medicine while another has surplus of the SAME medicine. Recommend a specific transfer.
-  c) expiry     — medicines nearing expiry that should be used or moved. If no expiry data is provided, skip this category.
+  c) expiry     — for EVERY stock row whose "expiry_date" is within the next 30 days from today (see "today" in the payload), generate ONE "expiry" insight. Severity: "high" if expiry_date is within 7 days OR expiry_date is already in the past; "medium" if within 30 days. Description MUST state the medicine name, the current stock quantity, the exact expiry date, and how many days remain (use negative wording like "expired X days ago" if already past). Recommend either using the stock soon at that center or transferring it to another center that shows active demand for the SAME medicine (low stock, a pending requisition for it, or higher throughput). If no stock row has an expiry_date within 30 days, skip this category entirely — do not invent expiry insights.
   d) footfall   — compare THIS WEEK's total patient footfall vs LAST WEEK's total per center using the "footfall_weekly" summary. Only generate a footfall insight for a center with data in BOTH weeks. If a center lacks 2 weeks of data, SKIP it — do not guess from proxies.
 
 Return between 3 and 12 insights total. Be specific, not generic.`;
@@ -54,7 +54,7 @@ export const runAiAnalysis = createServerFn({ method: "POST" })
     // Gather data
     const [centersRes, stockRes, attRes, bedsRes, testsRes, pathRes, reqsRes, footRes] = await Promise.all([
       supabaseAdmin.from("centers").select("id, center_name, center_type"),
-      supabaseAdmin.from("stock").select("id, center_id, name, stock, created_at, updated_at"),
+      supabaseAdmin.from("stock").select("id, center_id, name, stock, expiry_date, created_at, updated_at"),
       supabaseAdmin.from("attendance").select("id, center_id, name, role, status, last_marked_at"),
       supabaseAdmin.from("beds").select("id, center_id, name, count, available"),
       supabaseAdmin.from("tests").select("id, center_id, name, available"),
@@ -102,8 +102,9 @@ export const runAiAnalysis = createServerFn({ method: "POST" })
 
     const payload = {
       generated_at: new Date().toISOString(),
+      today: startOfToday.toISOString().slice(0, 10),
       notes:
-        "No explicit medicine expiry column exists in the stock table — infer only if a strong signal exists, otherwise skip expiry insights. Use ONLY the footfall_weekly summary for footfall insights (real patient counts). Skip footfall for any center that lacks data in both weeks.",
+        "Each stock row has an optional 'expiry_date' (ISO YYYY-MM-DD, may be null). Compare it to 'today' to compute days remaining and drive expiry insights per the rules above. Use ONLY the footfall_weekly summary for footfall insights (real patient counts). Skip footfall for any center that lacks data in both weeks.",
       centers: centersForModel,
       stock: withRef(stockRes.data ?? []),
       attendance: withRef(attRes.data ?? []),
