@@ -394,18 +394,19 @@ function Attendance({ staff, setStaff }: { staff: Staff[]; setStaff: React.Dispa
 
 /* ---------- Section 4: Beds ---------- */
 type Bed = { name: string; count: number; available: boolean };
-function Beds() {
-  const [beds, setBeds] = useState<Bed[]>([
-    { name: "General Beds", count: 24, available: true },
-    { name: "ICU Beds", count: 4, available: true },
-    { name: "Emergency Beds", count: 6, available: false },
-    { name: "Maternity Beds", count: 8, available: true },
-  ]);
+const INITIAL_BEDS: Bed[] = [
+  { name: "General Beds", count: 24, available: true },
+  { name: "ICU Beds", count: 4, available: true },
+  { name: "Emergency Beds", count: 6, available: false },
+  { name: "Maternity Beds", count: 8, available: true },
+];
+function Beds({ beds, setBeds }: { beds: Bed[]; setBeds: React.Dispatch<React.SetStateAction<Bed[]>> }) {
   const [query, setQuery] = useState("");
   const change = (i: number, delta: number) =>
     setBeds((p) => p.map((b, idx) => idx === i ? { ...b, count: Math.max(0, b.count + delta) } : b));
   const setAvail = (i: number, val: boolean) =>
     setBeds((p) => p.map((b, idx) => idx === i ? { ...b, available: val } : b));
+
 
   const filtered = beds.map((b, i) => ({ b, i })).filter(({ b }) => b.name.toLowerCase().includes(query.trim().toLowerCase()));
 
