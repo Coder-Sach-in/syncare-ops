@@ -538,7 +538,7 @@ function VoiceStock({ meds, refresh }: { meds: Med[]; refresh: () => void }) {
 /* ================================================================
    ATTENDANCE
    ================================================================ */
-function AttendanceView({ staff, refresh, onBack, canEdit, centerId }: { staff: StaffRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null }) {
+function AttendanceView({ staff, refresh, onBack, canEdit, centerId, hideBack }: { staff: StaffRow[]; refresh: () => void; onBack: () => void; canEdit: boolean; centerId: string | null; hideBack?: boolean }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
