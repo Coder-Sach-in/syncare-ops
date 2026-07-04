@@ -423,9 +423,9 @@ function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest, hid
                         <div className="text-2xl font-bold tabular-nums">{m.stock}</div>
                       </div>
                       {canEdit && (
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          <button onClick={() => change(m.id, m.stock, -1)} className="h-12 rounded-xl bg-destructive-soft text-destructive font-bold grid place-items-center hover:bg-destructive hover:text-destructive-foreground active:scale-95 transition"><Minus className="h-6 w-6" /></button>
-                          <button onClick={() => change(m.id, m.stock, 1)} className="h-12 rounded-xl bg-accent-soft text-accent font-bold grid place-items-center hover:bg-accent hover:text-accent-foreground active:scale-95 transition"><Plus className="h-6 w-6" /></button>
+                        <div className="mt-4">
+                          <QtyStepper current={m.stock} layout="row" addLabel="Add stock" subLabel="Dispense / remove"
+                            onApply={(delta) => change(m.id, m.stock, delta)} />
                         </div>
                       )}
                     </div>
