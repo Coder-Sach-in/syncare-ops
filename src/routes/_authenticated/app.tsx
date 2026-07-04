@@ -1241,6 +1241,81 @@ function BottomNav({ active, onSelect, isAdmin }: { active: string; onSelect: (i
   );
 }
 
+function FootfallCard({ centerId }: { centerId: string }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [count, setCount] = useState<string>("");
+  const [saved, setSaved] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("patient_footfall")
+      .select("patient_count")
+      .eq("center_id", centerId)
+      .eq("date", today)
+      .maybeSingle();
+    if (data) {
+      setSaved(data.patient_count);
+      setCount(String(data.patient_count));
+    } else {
+      setSaved(null);
+      setCount("");
+    }
+    setLoading(false);
+  }, [centerId, today]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const save = async () => {
+    const n = parseInt(count, 10);
+    if (isNaN(n) || n < 0) { toast.error("Enter a valid patient count"); return; }
+    setSaving(true);
+    const { error } = await supabase
+      .from("patient_footfall")
+      .upsert({ center_id: centerId, date: today, patient_count: n }, { onConflict: "center_id,date" });
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    setSaved(n);
+    toast.success("Footfall saved");
+  };
+
+  return (
+    <div className="rounded-2xl bg-card border border-border p-4 shadow-[var(--shadow-card)] flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex items-center gap-3 flex-1">
+        <div className="h-10 w-10 rounded-xl grid place-items-center bg-primary-soft text-primary">
+          <TrendingUp className="h-5 w-5" />
+        </div>
+        <div>
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Today's Patient Footfall</div>
+          <div className="text-xs text-muted-foreground">
+            {loading ? "Loading…" : saved !== null ? `Saved: ${saved} patients today` : "Not entered yet for today"}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min={0}
+          inputMode="numeric"
+          value={count}
+          onChange={(e) => setCount(e.target.value)}
+          placeholder="e.g. 42"
+          className="h-10 w-28 rounded-lg border border-border bg-background px-3 text-sm"
+        />
+        <button
+          onClick={save}
+          disabled={saving || loading}
+          className="h-10 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
+        >
+          {saving ? "Saving…" : saved !== null ? "Update" : "Save"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ meds, staff, beds, tests, path, reqs, centers, isAdmin, onNavigate }: {
   meds: Med[]; staff: StaffRow[]; beds: BedRow[]; tests: TestRow[]; path: PathRow[]; reqs: ReqRow[]; centers: Center[]; isAdmin: boolean;
   onNavigate: (id: string) => void;
@@ -1814,7 +1889,12 @@ function AppPage() {
             onOpenReqs={() => onSelect("requisitions")}
           />
         )}
-        {active === "dashboard" && !isAdmin && <Dashboard meds={meds} staff={staff} beds={beds} tests={tests} path={path} reqs={reqs} centers={centers} isAdmin={isAdmin} onNavigate={onSelect} />}
+        {active === "dashboard" && !isAdmin && (
+          <div className="space-y-6">
+            {centerId && <FootfallCard centerId={centerId} />}
+            <Dashboard meds={meds} staff={staff} beds={beds} tests={tests} path={path} reqs={reqs} centers={centers} isAdmin={isAdmin} onNavigate={onSelect} />
+          </div>
+        )}
         {active === "stock" && <MedicineView meds={meds} refresh={refreshAll} onBack={goHome} canEdit={canEdit} centerId={centerId} onRequest={() => setReqModal(true)} />}
         {active === "attendance" && <AttendanceView staff={staff} refresh={refreshAll} onBack={goHome} canEdit={canEdit} centerId={centerId} />}
         {active === "beds" && <BedsView beds={beds} refresh={refreshAll} onBack={goHome} canEdit={canEdit} centerId={centerId} />}

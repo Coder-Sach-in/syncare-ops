@@ -27,17 +27,17 @@ const SYSTEM_PROMPT = `You are a public-health operations analyst helping a dist
 
 Return STRICT JSON only. No markdown fences, no preamble, no trailing text. The response MUST be a JSON array of insight objects with EXACTLY these keys:
   - insight_type: one of "stockout" | "redistribution" | "expiry" | "footfall"
-  - center_id: UUID string of the primary related center, or null (use null for redistribution insights that span two centers if you cannot pick one primary; otherwise set it to the shortage center)
-  - related_center_id: UUID string of the second/destination center (only for redistribution), else null
-  - title: short headline (< 70 chars)
-  - description: 1-3 sentences in simple, plain English explaining WHAT is happening and WHY, referencing concrete numbers from the data. Avoid jargon.
+  - center_ref: the short "ref" code of the primary related center (e.g. "C1"), or null. Use the ref codes exactly as provided in the "centers" list — DO NOT invent UUIDs and DO NOT put any UUID or ref code inside the title or description text.
+  - related_center_ref: the ref code of the second/destination center (only for redistribution), else null
+  - title: short headline (< 70 chars). Use the plain center NAME (e.g. "Ghatia CHC"), never a code or UUID.
+  - description: 1-3 sentences in simple, plain English explaining WHAT is happening and WHY, referencing concrete numbers from the data. Use the plain center NAME only — never a ref code, never a UUID. Avoid jargon.
   - severity: "high" | "medium" | "low"
 
 Cover these categories when the data supports them (skip a category rather than invent):
   a) stockout   — medicines at real risk of running out soon based on current low stock and demand signals. Explain reasoning.
   b) redistribution — one center is short of a medicine while another has surplus of the SAME medicine. Recommend a specific transfer.
   c) expiry     — medicines nearing expiry that should be used or moved. If no expiry data is provided, skip this category.
-  d) footfall   — a one-line comparison per center of this week vs last week's patient footfall trend, in plain language. If no footfall data, skip.
+  d) footfall   — compare THIS WEEK's total patient footfall vs LAST WEEK's total per center using the "footfall_weekly" summary. Only generate a footfall insight for a center with data in BOTH weeks. If a center lacks 2 weeks of data, SKIP it — do not guess from proxies.
 
 Return between 3 and 12 insights total. Be specific, not generic.`;
 
@@ -52,7 +52,7 @@ export const runAiAnalysis = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Gather data
-    const [centersRes, stockRes, attRes, bedsRes, testsRes, pathRes, reqsRes] = await Promise.all([
+    const [centersRes, stockRes, attRes, bedsRes, testsRes, pathRes, reqsRes, footRes] = await Promise.all([
       supabaseAdmin.from("centers").select("id, center_name, center_type"),
       supabaseAdmin.from("stock").select("id, center_id, name, stock, created_at, updated_at"),
       supabaseAdmin.from("attendance").select("id, center_id, name, role, status, last_marked_at"),
@@ -60,19 +60,58 @@ export const runAiAnalysis = createServerFn({ method: "POST" })
       supabaseAdmin.from("tests").select("id, center_id, name, available"),
       supabaseAdmin.from("pathology_labs").select("id, center_id, test_name, sample_status, report_status, turnaround_time_hours, created_at, updated_at"),
       supabaseAdmin.from("requisition_requests").select("id, center_id, item_name, item_type, quantity_requested, status, requested_at, resolved_at"),
+      supabaseAdmin.from("patient_footfall").select("center_id, date, patient_count"),
     ]);
+
+    // Build ref-code map so the model never sees raw UUIDs
+    const centersRaw = centersRes.data ?? [];
+    const centerByRef: Record<string, { id: string; name: string; type: string }> = {};
+    const refByCenterId: Record<string, string> = {};
+    const centersForModel = centersRaw.map((c: any, i: number) => {
+      const ref = `C${i + 1}`;
+      centerByRef[ref] = { id: c.id, name: `${c.center_name} ${c.center_type}`.trim(), type: c.center_type };
+      refByCenterId[c.id] = ref;
+      return { ref, name: `${c.center_name} ${c.center_type}`.trim(), type: c.center_type };
+    });
+    const withRef = <T extends { center_id: string | null }>(rows: T[]) =>
+      rows.map(({ center_id, ...rest }) => ({ center: center_id ? refByCenterId[center_id] ?? null : null, ...rest }));
+
+    // Aggregate footfall into this-week vs last-week totals per center
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const thisWeekStart = new Date(startOfToday.getTime() - 6 * 86400000);
+    const lastWeekStart = new Date(startOfToday.getTime() - 13 * 86400000);
+    const lastWeekEnd = new Date(startOfToday.getTime() - 7 * 86400000);
+    const footfallWeekly: Record<string, { center: string; center_name: string; this_week_total: number; last_week_total: number; days_this_week: number; days_last_week: number }> = {};
+    for (const c of centersRaw as any[]) {
+      const ref = refByCenterId[c.id];
+      footfallWeekly[ref] = { center: ref, center_name: `${c.center_name} ${c.center_type}`.trim(), this_week_total: 0, last_week_total: 0, days_this_week: 0, days_last_week: 0 };
+    }
+    for (const row of (footRes.data ?? []) as any[]) {
+      const ref = refByCenterId[row.center_id];
+      if (!ref) continue;
+      const d = new Date(row.date + "T00:00:00");
+      if (d >= thisWeekStart && d <= startOfToday) {
+        footfallWeekly[ref].this_week_total += row.patient_count;
+        footfallWeekly[ref].days_this_week += 1;
+      } else if (d >= lastWeekStart && d <= lastWeekEnd) {
+        footfallWeekly[ref].last_week_total += row.patient_count;
+        footfallWeekly[ref].days_last_week += 1;
+      }
+    }
 
     const payload = {
       generated_at: new Date().toISOString(),
       notes:
-        "No explicit medicine expiry column exists in the stock table — infer only if strong signal, otherwise skip expiry insights. No dedicated patient-footfall table exists; use pathology_labs volume and requisition_requests activity per center as a rough proxy for weekly patient throughput.",
-      centers: centersRes.data ?? [],
-      stock: stockRes.data ?? [],
-      attendance: attRes.data ?? [],
-      beds: bedsRes.data ?? [],
-      tests: testsRes.data ?? [],
-      pathology_labs: pathRes.data ?? [],
-      requisition_requests: reqsRes.data ?? [],
+        "No explicit medicine expiry column exists in the stock table — infer only if a strong signal exists, otherwise skip expiry insights. Use ONLY the footfall_weekly summary for footfall insights (real patient counts). Skip footfall for any center that lacks data in both weeks.",
+      centers: centersForModel,
+      stock: withRef(stockRes.data ?? []),
+      attendance: withRef(attRes.data ?? []),
+      beds: withRef(bedsRes.data ?? []),
+      tests: withRef(testsRes.data ?? []),
+      pathology_labs: withRef(pathRes.data ?? []),
+      requisition_requests: withRef(reqsRes.data ?? []),
+      footfall_weekly: Object.values(footfallWeekly),
     };
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -99,8 +138,7 @@ export const runAiAnalysis = createServerFn({ method: "POST" })
     const aiJson = await aiRes.json();
     const raw: string = aiJson?.choices?.[0]?.message?.content ?? "";
 
-    // Extract JSON array from response (models sometimes wrap in { "insights": [...] })
-    let insights: AiInsight[] = [];
+    let insights: any[] = [];
     try {
       const cleaned = raw.trim().replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
       const parsed = JSON.parse(cleaned);
@@ -108,16 +146,18 @@ export const runAiAnalysis = createServerFn({ method: "POST" })
       else if (Array.isArray(parsed?.insights)) insights = parsed.insights;
       else if (Array.isArray(parsed?.data)) insights = parsed.data;
       else {
-        // find first array value in object
         for (const v of Object.values(parsed ?? {})) {
-          if (Array.isArray(v)) { insights = v as AiInsight[]; break; }
+          if (Array.isArray(v)) { insights = v as any[]; break; }
         }
       }
     } catch (e) {
       throw new Error("AI returned malformed JSON");
     }
 
-    const validCenterIds = new Set((centersRes.data ?? []).map((c: any) => c.id));
+    // Strip any UUIDs that the model may have accidentally embedded in text
+    const UUID_RE = /\s*[\(\[]?\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b[\)\]]?/gi;
+    const stripUuid = (s: string) => s.replace(UUID_RE, "").replace(/\s{2,}/g, " ").replace(/\s+([,.;:])/g, "$1").trim();
+
     const rowsToInsert = insights
       .filter((i) => i && typeof i === "object")
       .map((i) => {
@@ -125,12 +165,16 @@ export const runAiAnalysis = createServerFn({ method: "POST" })
           ? (i.insight_type as InsightType)
           : "stockout";
         const severity = ["high", "medium", "low"].includes(i.severity as string) ? (i.severity as Severity) : "medium";
+        const primaryRef = typeof i.center_ref === "string" ? i.center_ref : (typeof i.center_id === "string" ? i.center_id : null);
+        const relatedRef = typeof i.related_center_ref === "string" ? i.related_center_ref : (typeof i.related_center_id === "string" ? i.related_center_id : null);
+        const center_id = primaryRef && centerByRef[primaryRef] ? centerByRef[primaryRef].id : null;
+        const related_center_id = relatedRef && centerByRef[relatedRef] ? centerByRef[relatedRef].id : null;
         return {
           insight_type,
-          center_id: i.center_id && validCenterIds.has(i.center_id) ? i.center_id : null,
-          related_center_id: i.related_center_id && validCenterIds.has(i.related_center_id) ? i.related_center_id : null,
-          title: String(i.title ?? "Insight").slice(0, 200),
-          description: String(i.description ?? "").slice(0, 2000),
+          center_id,
+          related_center_id,
+          title: stripUuid(String(i.title ?? "Insight")).slice(0, 200),
+          description: stripUuid(String(i.description ?? "")).slice(0, 2000),
           severity,
         };
       })
