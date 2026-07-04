@@ -661,7 +661,7 @@ function BedsView({ beds, refresh, onBack, canEdit, centerId, hideBack }: { beds
   };
   return (
     <div className="space-y-5">
-      <BackBar label="Bed Availability" onBack={onBack} />
+      {!hideBack && <BackBar label="Bed Availability" onBack={onBack} />}
       <Section id="beds" title="Bed Availability" subtitle="Alerts first, then update or add wards" icon={BedDouble}>
         <div className="space-y-5">
           {!canEdit && <ReadOnlyBanner />}
