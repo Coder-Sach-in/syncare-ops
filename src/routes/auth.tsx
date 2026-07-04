@@ -37,7 +37,7 @@ function AuthPage() {
     navigate({ to: "/app" });
   };
 
-  const fillDemo = (em: string) => { setEmail(em); setPassword("HealthSync@2026"); };
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-soft via-background to-accent-soft grid place-items-center px-4 py-10">
@@ -78,25 +78,6 @@ function AuthPage() {
           </button>
         </form>
 
-        <div className="mt-4 rounded-2xl bg-card border border-border p-4 text-xs">
-          <div className="font-bold mb-2">Demo accounts <span className="text-muted-foreground font-normal">(password: <code className="bg-muted px-1 rounded">HealthSync@2026</code>)</span></div>
-          <div className="grid grid-cols-1 gap-1.5">
-            <button type="button" onClick={() => fillDemo("admin@healthsync.ai")} className="text-left px-2 py-1.5 rounded-lg hover:bg-primary-soft transition">
-              <span className="font-semibold text-primary">admin@healthsync.ai</span> — District Admin
-            </button>
-            {[
-              ["ghatia.chc@healthsync.ai", "Ghatia CHC"],
-              ["tarana.chc@healthsync.ai", "Tarana CHC"],
-              ["jharda.chc@healthsync.ai", "Jharda CHC"],
-              ["narwar.chc@healthsync.ai", "Narwar CHC"],
-              ["unhel.phc@healthsync.ai", "Unhel PHC"],
-            ].map(([em, name]) => (
-              <button key={em} type="button" onClick={() => fillDemo(em)} className="text-left px-2 py-1.5 rounded-lg hover:bg-primary-soft transition">
-                <span className="font-semibold text-primary">{em}</span> — {name}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
