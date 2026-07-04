@@ -1535,6 +1535,38 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleString();
 }
 
+function CreateReqFromInsightButton({ centerId, itemName, quantity, onCreated }: { centerId: string; itemName: string; quantity: number; onCreated?: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const submit = async () => {
+    setBusy(true);
+    const { error } = await supabase.from("requisition_requests").insert({
+      center_id: centerId,
+      item_type: "medicine",
+      item_name: itemName,
+      quantity_requested: Math.max(1, Math.floor(quantity)),
+      status: "Pending",
+    });
+    setBusy(false);
+    if (error) { toast.error(`Could not create requisition: ${error.message}`); return; }
+    setDone(true);
+    toast.success(`Requisition created — ${quantity} × ${itemName}`);
+    onCreated?.();
+  };
+  return (
+    <button
+      type="button"
+      onClick={submit}
+      disabled={busy || done}
+      className="mt-3 w-full h-9 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold inline-flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60 transition"
+    >
+      {done ? (<><Check className="h-3.5 w-3.5" /> Requisition created</>)
+        : busy ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…</>)
+        : (<><Send className="h-3.5 w-3.5" /> Create Requisition from this Suggestion</>)}
+    </button>
+  );
+}
+
 function AiInsightsPanel({ centers, onRequisitionCreated }: { centers: Center[]; onRequisitionCreated?: () => void }) {
   const [insights, setInsights] = useState<AiInsightRow[]>([]);
   const [loading, setLoading] = useState(false);
