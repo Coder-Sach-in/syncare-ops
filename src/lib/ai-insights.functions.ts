@@ -11,6 +11,8 @@ type AiInsight = {
   title: string;
   description: string;
   severity: Severity;
+  item_name: string | null;
+  suggested_quantity: number | null;
 };
 
 async function assertAdmin(supabase: any, userId: string) {
