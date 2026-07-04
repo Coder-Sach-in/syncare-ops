@@ -778,7 +778,12 @@ function PathologyView({ rows, refresh, onBack, canEdit, centerId }: { rows: Pat
                     <div className="flex items-center gap-2.5">
                       <div className="h-10 w-10 rounded-xl bg-primary-soft text-primary grid place-items-center"><FlaskConical className="h-5 w-5" /></div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold truncate">{r.test_name}</div>
+                        <NameWithActions
+                          name={r.test_name}
+                          canEdit={canEdit}
+                          onSave={async (v) => { await supabase.from("pathology_labs").update({ test_name: v }).eq("id", r.id); refresh(); }}
+                          onDelete={async () => { await supabase.from("pathology_labs").delete().eq("id", r.id); refresh(); }}
+                        />
                         <div className="text-xs text-muted-foreground">TAT: {r.turnaround_time_hours}h</div>
                       </div>
                     </div>
