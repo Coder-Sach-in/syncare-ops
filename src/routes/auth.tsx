@@ -37,7 +37,7 @@ function AuthPage() {
     navigate({ to: "/app" });
   };
 
-  const fillDemo = (em: string) => { setEmail(em); setPassword("HealthSync@2026"); };
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-soft via-background to-accent-soft grid place-items-center px-4 py-10">
