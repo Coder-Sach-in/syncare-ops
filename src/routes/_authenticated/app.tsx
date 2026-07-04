@@ -1659,6 +1659,11 @@ function AiInsightsPanel({ centers, onRequisitionCreated }: { centers: Center[];
                     const s = sevMeta(i.severity);
                     const cN = centerName(i.center_id);
                     const rN = centerName(i.related_center_id);
+                    const canCreateReq =
+                      i.insight_type === "redistribution" &&
+                      !!i.center_id &&
+                      !!i.item_name &&
+                      !!i.suggested_quantity;
                     return (
                       <div key={i.id} className={`rounded-xl bg-card border border-border p-3 ring-1 ${s.ring}`}>
                         <div className="flex items-start justify-between gap-2">
@@ -1675,6 +1680,14 @@ function AiInsightsPanel({ centers, onRequisitionCreated }: { centers: Center[];
                           </span>
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{i.description}</p>
+                        {canCreateReq && (
+                          <CreateReqFromInsightButton
+                            centerId={i.center_id!}
+                            itemName={i.item_name!}
+                            quantity={i.suggested_quantity!}
+                            onCreated={onRequisitionCreated}
+                          />
+                        )}
                       </div>
                     );
                   })}
