@@ -1372,7 +1372,9 @@ function AdminDashboard({
     eff: computeEfficiency(c.id, meds, staff, beds),
   }));
   const redCenters = withStatus.filter((w) => w.status.level === "red");
-  const ranked = [...withStatus].sort((a, b) => b.eff.total - a.eff.total);
+  const withData = withStatus.filter((w) => w.eff.hasData);
+  const withoutData = withStatus.filter((w) => !w.eff.hasData);
+  const ranked = [...withData].sort((a, b) => b.eff.total - a.eff.total);
   const pendingReqs = reqs.filter((r) => r.status === "Pending");
 
   const tone = (lvl: CenterStatus["level"]) =>
