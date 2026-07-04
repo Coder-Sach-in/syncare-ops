@@ -338,11 +338,11 @@ const INITIAL_STAFF: Staff[] = [
   { id: "4", name: "Nurse Rakesh",      role: "Nurse", status: "idle", initials: "RA", color: "oklch(0.65 0.18 250)" },
 ];
 
-function Attendance() {
-  const [staff, setStaff] = useState<Staff[]>(INITIAL_STAFF);
+function Attendance({ staff, setStaff }: { staff: Staff[]; setStaff: React.Dispatch<React.SetStateAction<Staff[]>> }) {
   const [query, setQuery] = useState("");
   const set = (id: string, status: "in" | "out") =>
     setStaff((p) => p.map((s) => s.id === id ? { ...s, status, last: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) } : s));
+
 
   const filtered = staff.filter((s) => {
     const q = query.trim().toLowerCase();
