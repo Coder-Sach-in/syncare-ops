@@ -377,7 +377,8 @@ function MedicineView({ meds, refresh, onBack, canEdit, centerId, onRequest }: {
 }
 
 /* ---------- Voice ---------- */
-type SR = any;
+import { transcribeAudio } from "@/lib/transcribe.functions";
+
 const NUMBER_WORDS: Record<string, number> = {
   zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
   eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13,
@@ -386,14 +387,33 @@ const NUMBER_WORDS: Record<string, number> = {
   seventy: 70, eighty: 80, ninety: 90, hundred: 100,
 };
 
+function pickMime(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  const cands = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/ogg;codecs=opus"];
+  for (const c of cands) if ((MediaRecorder as any).isTypeSupported?.(c)) return c;
+  return "";
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  const buf = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)) as any);
+  }
+  return btoa(bin);
+}
+
 function VoiceStock({ meds, refresh }: { meds: Med[]; refresh: () => void }) {
   const [listening, setListening] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [text, setText] = useState("");
   const [status, setStatus] = useState<{ ok?: boolean; msg: string } | null>(null);
-  const [supported, setSupported] = useState(true);
-  const recRef = useRef<SR | null>(null);
+  const recRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
   const medsRef = useRef(meds);
-  const processedRef = useRef(false);
   useEffect(() => { medsRef.current = meds; }, [meds]);
 
   async function parseCommand(raw: string) {
@@ -422,81 +442,87 @@ function VoiceStock({ meds, refresh }: { meds: Med[]; refresh: () => void }) {
     setStatus({ ok: true, msg: `${med.name} ${sign > 0 ? "+" : "−"}${n} — Stock updated successfully` });
   }
 
-  const toggle = async () => {
-    if (typeof window === "undefined") return;
-    const SRC = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SRC) { setSupported(false); setStatus({ ok: false, msg: "Voice recognition is not supported in this browser." }); return; }
-    if (!window.isSecureContext) { setStatus({ ok: false, msg: "Voice requires a secure (HTTPS) context." }); return; }
-    if (listening) { try { recRef.current?.stop(); } catch { /* ignore */ } return; }
+  const stopTracks = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  };
 
-    // Proactively request mic permission (surfaces clear error if blocked)
+  const startRecording = async () => {
+    setStatus(null); setText("");
+    if (typeof window === "undefined" || typeof MediaRecorder === "undefined") {
+      setStatus({ ok: false, msg: "Recording is not supported in this browser." }); return;
+    }
+    if (!window.isSecureContext) {
+      setStatus({ ok: false, msg: "Voice requires a secure (HTTPS) context." }); return;
+    }
+    let stream: MediaStream;
     try {
-      if (navigator.mediaDevices?.getUserMedia) {
-        const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-        s.getTracks().forEach((t) => t.stop());
-      }
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (e: any) {
       const name = e?.name || "";
-      const msg = name === "NotAllowedError" || name === "SecurityError"
-        ? "Microphone permission denied. Allow mic access and try again."
-        : name === "NotFoundError"
-          ? "No microphone found."
-          : "Microphone unavailable. Check permissions and try again.";
-      setStatus({ ok: false, msg });
+      setStatus({ ok: false, msg:
+        name === "NotAllowedError" || name === "SecurityError" ? "Microphone permission denied. Allow mic access and try again." :
+        name === "NotFoundError" ? "No microphone found." :
+        "Microphone unavailable. Check permissions and try again." });
       return;
     }
-
-    const rec: SR = new SRC();
-    rec.lang = "en-US";
-    rec.interimResults = true;
-    rec.continuous = false;
-    rec.maxAlternatives = 1;
-    processedRef.current = false;
-    rec.onstart = () => { setListening(true); setStatus(null); setText(""); };
-    rec.onresult = (e: any) => {
-      const t = Array.from(e.results).map((r: any) => r[0].transcript).join(" ");
-      setText(t);
-      const last = e.results[e.results.length - 1];
-      if (last.isFinal && !processedRef.current) {
-        processedRef.current = true;
-        parseCommand(t);
-        try { rec.stop(); } catch { /* ignore */ }
+    streamRef.current = stream;
+    const mimeType = pickMime();
+    const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    chunksRef.current = [];
+    rec.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunksRef.current.push(e.data); };
+    rec.onstop = async () => {
+      stopTracks();
+      setListening(false);
+      const blob = new Blob(chunksRef.current, { type: rec.mimeType || mimeType || "audio/webm" });
+      chunksRef.current = [];
+      if (blob.size < 1024) {
+        setStatus({ ok: false, msg: "That recording was empty — please try again." });
+        return;
+      }
+      setBusy(true);
+      try {
+        const audioBase64 = await blobToBase64(blob);
+        const { text: transcript } = await transcribeAudio({ data: { audioBase64, mimeType: blob.type } });
+        setText(transcript);
+        await parseCommand(transcript);
+      } catch (err: any) {
+        setStatus({ ok: false, msg: err?.message?.includes("Transcription failed") ? "Transcription failed. Please try again." : "Could not transcribe audio. Please try again." });
+      } finally {
+        setBusy(false);
       }
     };
-    rec.onerror = (e: any) => {
-      setListening(false);
-      const err = e?.error || "";
-      const msg =
-        err === "not-allowed" || err === "service-not-allowed"
-          ? "Microphone permission denied. Allow mic access and try again."
-          : err === "no-speech"
-            ? "No speech detected. Please try again."
-            : err === "audio-capture"
-              ? "No microphone detected."
-              : err === "network"
-                ? "Network error during voice recognition."
-                : err === "aborted"
-                  ? ""
-                  : "Could not understand. Please try again.";
-      if (msg) setStatus({ ok: false, msg });
-    };
-    rec.onend = () => { setListening(false); };
     recRef.current = rec;
-    try { rec.start(); }
-    catch (err: any) {
-      setListening(false);
-      setStatus({ ok: false, msg: "Could not start voice recognition. Try again." });
+    try {
+      rec.start();
+      setListening(true);
+    } catch {
+      stopTracks();
+      setStatus({ ok: false, msg: "Could not start recording. Try again." });
     }
   };
 
+  const toggle = async () => {
+    if (busy) return;
+    if (listening) {
+      try { recRef.current?.stop(); } catch { /* ignore */ }
+      return;
+    }
+    await startRecording();
+  };
+
+  useEffect(() => () => { stopTracks(); try { recRef.current?.stop(); } catch { /* ignore */ } }, []);
+
+  const label = busy ? "Transcribing..." : listening ? "Listening... Tap to stop" : "Tap the mic and speak";
+
   return (
     <div className="flex flex-col items-center text-center">
-      <button onClick={toggle} disabled={!supported || listening}
+      <button onClick={toggle} disabled={busy}
         className={`relative h-24 w-24 md:h-28 md:w-28 rounded-full grid place-items-center transition-all active:scale-95 ${listening ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground hover:brightness-110"} shadow-[var(--shadow-elevated)] disabled:opacity-50 disabled:cursor-not-allowed`}>
         {listening && <span className="absolute inset-0 rounded-full bg-destructive opacity-40 animate-ping" />}
         {listening ? <MicOff className="h-10 w-10 relative" /> : <Mic className="h-10 w-10 relative" />}
       </button>
-      <div className="mt-3 text-sm font-semibold text-primary">{listening ? "Listening..." : supported ? "Tap the mic and speak" : "Voice recognition is not supported in this browser."}</div>
+      <div className="mt-3 text-sm font-semibold text-primary">{label}</div>
       <div className="mt-2 w-full max-w-lg rounded-xl bg-white border border-border px-4 py-3 min-h-[48px] text-sm text-foreground">
         {text || <span className="text-muted-foreground">Say e.g. "Paracetamol plus five", "ORS minus two"</span>}
       </div>
