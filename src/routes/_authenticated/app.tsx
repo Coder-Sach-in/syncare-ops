@@ -168,6 +168,96 @@ function ReadOnlyBanner() {
   );
 }
 
+/* Reusable rename + delete controls used on every item card */
+function NameWithActions({
+  name, canEdit, onSave, onDelete, nameClassName,
+}: {
+  name: string; canEdit: boolean;
+  onSave: (v: string) => Promise<void> | void;
+  onDelete: () => Promise<void> | void;
+  nameClassName?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(name);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setVal(name); }, [name]);
+
+  const commit = async () => {
+    const v = val.trim();
+    if (!v) { setVal(name); setEditing(false); return; }
+    if (v === name) { setEditing(false); return; }
+    setBusy(true);
+    try { await onSave(v); } finally { setBusy(false); setEditing(false); }
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1 min-w-0 flex-1">
+        <input
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setVal(name); setEditing(false); } }}
+          autoFocus
+          disabled={busy}
+          className="h-8 px-2 rounded-md border border-primary/40 bg-white text-sm font-semibold min-w-0 flex-1 focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+        <button type="button" onClick={commit} disabled={busy} title="Save"
+          className="h-7 w-7 shrink-0 grid place-items-center rounded-md bg-accent text-accent-foreground hover:brightness-110 active:scale-95 transition disabled:opacity-50">
+          <Check className="h-3.5 w-3.5" />
+        </button>
+        <button type="button" onClick={() => { setVal(name); setEditing(false); }} disabled={busy} title="Cancel"
+          className="h-7 w-7 shrink-0 grid place-items-center rounded-md bg-muted text-foreground hover:bg-secondary active:scale-95 transition">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+      <div className={nameClassName ?? "font-semibold truncate min-w-0"}>{name}</div>
+      {canEdit && (
+        <>
+          <button type="button" onClick={() => setEditing(true)} title="Rename"
+            className="h-7 w-7 shrink-0 grid place-items-center rounded-md text-muted-foreground hover:bg-primary-soft hover:text-primary active:scale-95 transition">
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button type="button" onClick={() => setConfirming(true)} title="Delete"
+            className="h-7 w-7 shrink-0 grid place-items-center rounded-md text-muted-foreground hover:bg-destructive-soft hover:text-destructive active:scale-95 transition">
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </>
+      )}
+      {confirming && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm grid place-items-center p-4" onClick={() => setConfirming(false)}>
+          <div className="bg-white rounded-2xl p-5 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="h-10 w-10 rounded-xl bg-destructive-soft text-destructive grid place-items-center shrink-0">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-base">Remove &ldquo;{name}&rdquo;?</div>
+                <div className="text-sm text-muted-foreground mt-0.5">This can&apos;t be undone.</div>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setConfirming(false)} disabled={busy}
+                className="h-10 px-4 rounded-xl bg-muted font-semibold text-sm hover:bg-secondary transition">Cancel</button>
+              <button
+                onClick={async () => { setBusy(true); try { await onDelete(); } finally { setBusy(false); setConfirming(false); } }}
+                disabled={busy}
+                className="h-10 px-4 rounded-xl bg-destructive text-destructive-foreground font-semibold text-sm hover:brightness-110 active:scale-95 transition disabled:opacity-50">
+                {busy ? "Removing..." : "Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ================================================================
    MEDICINE
    ================================================================ */
