@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Bell, Hospital, Wifi, Mic, MicOff, Minus, Plus, Search,
   LayoutDashboard, Package, Users, BedDouble, TestTube, Settings,
