@@ -511,7 +511,12 @@ function AttendanceView({ staff, refresh, onBack, canEdit, centerId }: { staff: 
                     <div className="flex items-center gap-3">
                       <div className="h-14 w-14 rounded-full grid place-items-center text-white font-bold text-lg bg-primary">{initials(s.name)}</div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold truncate">{s.name}</div>
+                        <NameWithActions
+                          name={s.name}
+                          canEdit={canEdit}
+                          onSave={async (v) => { await supabase.from("attendance").update({ name: v }).eq("id", s.id); refresh(); }}
+                          onDelete={async () => { await supabase.from("attendance").delete().eq("id", s.id); refresh(); }}
+                        />
                         <div className="text-xs text-muted-foreground">{s.role}</div>
                         <div className="mt-1 text-xs font-semibold">
                           {s.status === "in" && <span className="text-accent">🟢 Present {s.last_marked_at && `· ${timeOf(s.last_marked_at)}`}</span>}
