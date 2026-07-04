@@ -1814,7 +1814,12 @@ function AppPage() {
             onOpenReqs={() => onSelect("requisitions")}
           />
         )}
-        {active === "dashboard" && !isAdmin && <Dashboard meds={meds} staff={staff} beds={beds} tests={tests} path={path} reqs={reqs} centers={centers} isAdmin={isAdmin} onNavigate={onSelect} />}
+        {active === "dashboard" && !isAdmin && (
+          <div className="space-y-6">
+            {centerId && <FootfallCard centerId={centerId} />}
+            <Dashboard meds={meds} staff={staff} beds={beds} tests={tests} path={path} reqs={reqs} centers={centers} isAdmin={isAdmin} onNavigate={onSelect} />
+          </div>
+        )}
         {active === "stock" && <MedicineView meds={meds} refresh={refreshAll} onBack={goHome} canEdit={canEdit} centerId={centerId} onRequest={() => setReqModal(true)} />}
         {active === "attendance" && <AttendanceView staff={staff} refresh={refreshAll} onBack={goHome} canEdit={canEdit} centerId={centerId} />}
         {active === "beds" && <BedsView beds={beds} refresh={refreshAll} onBack={goHome} canEdit={canEdit} centerId={centerId} />}
