@@ -21,19 +21,19 @@ SmartSehat AI connects ground-level health centres to district administrators th
 ## Test Credentials (for judges/reviewers)
 
 **District Admin** (full district oversight, Ujjain):
-- Email: `admin@healthsync.ai`
-- Password: `HealthSync@2026`
+- Email: `admin@smartsehat.ai`
+- Password: `SmartSehat@2026`
 
-**Centre Staff** (same password for all — `HealthSync@2026`):
+**Centre Staff** (same password for all — `SmartSehat@2026`):
 
 | Centre | Type | Login Email |
 |---|---|---|
-| Charak Bhawan | CHC | charak.chc@healthsync.ai |
-| Ghatia | CHC | ghatia.chc@healthsync.ai |
-| Jharda | CHC | jharda.chc@healthsync.ai |
-| Narwar | CHC | narwar.chc@healthsync.ai |
-| Tarana | CHC | tarana.chc@healthsync.ai |
-| Unhel | PHC | unhel.phc@healthsync.ai |
+| Charak Bhawan | CHC | charak@smartsehat.ai |
+| Ghatia | CHC | ghatia@smartsehat.ai |
+| Jharda | CHC | jharda@smartsehat.ai |
+| Narwar | CHC | narwar@smartsehat.ai |
+| Tarana | CHC | tarana@smartsehat.ai |
+| Unhel | PHC | unhel@smartsehat.ai |
 
 > Log in as a centre to see the ground-level Staff Portal, or as the district admin to see the full Ujjain district dashboard, AI Insights panel, and requisition approvals.
 
