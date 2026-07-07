@@ -13,7 +13,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
-import { Route as ApiPublicRebrandOnceRouteImport } from './routes/api/public/rebrand-once'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -34,23 +33,16 @@ const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
   path: '/app',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicRebrandOnceRoute = ApiPublicRebrandOnceRouteImport.update({
-  id: '/api/public/rebrand-once',
-  path: '/api/public/rebrand-once',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/app': typeof AuthenticatedAppRoute
-  '/api/public/rebrand-once': typeof ApiPublicRebrandOnceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/app': typeof AuthenticatedAppRoute
-  '/api/public/rebrand-once': typeof ApiPublicRebrandOnceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -58,27 +50,19 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/app': typeof AuthenticatedAppRoute
-  '/api/public/rebrand-once': typeof ApiPublicRebrandOnceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/app' | '/api/public/rebrand-once'
+  fullPaths: '/' | '/auth' | '/app'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/app' | '/api/public/rebrand-once'
-  id:
-    | '__root__'
-    | '/'
-    | '/_authenticated'
-    | '/auth'
-    | '/_authenticated/app'
-    | '/api/public/rebrand-once'
+  to: '/' | '/auth' | '/app'
+  id: '__root__' | '/' | '/_authenticated' | '/auth' | '/_authenticated/app'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  ApiPublicRebrandOnceRoute: typeof ApiPublicRebrandOnceRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -111,13 +95,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/public/rebrand-once': {
-      id: '/api/public/rebrand-once'
-      path: '/api/public/rebrand-once'
-      fullPath: '/api/public/rebrand-once'
-      preLoaderRoute: typeof ApiPublicRebrandOnceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -136,18 +113,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  ApiPublicRebrandOnceRoute: ApiPublicRebrandOnceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
