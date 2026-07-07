@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/public/rebrand-once")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (request.headers.get("x-rebrand-token") !== process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        if (request.headers.get("x-rebrand-token") !== "f9c8e2b1-4a7d-4e3f-9c8b-2a1e6f5d3c9b") {
           return new Response("forbidden", { status: 403 });
         }
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
