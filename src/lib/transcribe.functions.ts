@@ -32,7 +32,16 @@ export const transcribeAudio = createServerFn({ method: "POST" })
     const form = new FormData();
     form.append("file", new Blob([bytes], { type: mime }), `recording.${ext}`);
     form.append("model", "openai/gpt-4o-mini-transcribe");
-    form.append("prompt", "Medicine stock update commands like 'paracetamol add 10' or 'crocin minus 5' in Hindi or English.");
+    // Constrain recognition to Hindi only (ISO-639-1). The OpenAI transcription
+    // API accepts a single language code; "hi" prevents misdetection into
+    // Urdu/Arabic scripts. English words spoken in the same clip still
+    // transcribe correctly under a Hindi hint.
+    form.append("language", "hi");
+    form.append(
+      "prompt",
+      "Transcribe in Hindi using Devanagari script only. Do not use Urdu, Arabic, or any other script. Medicine stock update commands such as 'पैरासिटामोल 10 add करें' or 'crocin minus 5'.",
+    );
+
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
       method: "POST",
