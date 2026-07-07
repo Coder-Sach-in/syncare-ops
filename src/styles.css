@@ -76,3 +76,9 @@
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   }
 }
+
+/* Hide the "Edit with Lovable" badge on published deployments */
+#lovable-badge {
+  display: none !important;
+}
+
