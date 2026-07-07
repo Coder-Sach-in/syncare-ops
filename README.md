@@ -26,14 +26,14 @@ SmartSehat AI connects ground-level health centres to district administrators th
 
 **Centre Staff** (same password for all — `HealthSync@2026`):
 
-| Centre Name   | Type| Login Email |
-|--------|------|-----|-----------------|
+| Centre | Type | Login Email |
+|---|---|---|
 | Charak Bhawan | CHC | charak.chc@healthsync.ai |
-| Ghatia        | CHC | ghatia.chc@healthsync.ai |
-| Jharda        | CHC | jharda.chc@healthsync.ai |
-| Narwar        | CHC | narwar.chc@healthsync.ai |
-| Tarana        | CHC | tarana.chc@healthsync.ai |
-| Unhel         | PHC | unhel.phc@healthsync.ai |
+| Ghatia | CHC | ghatia.chc@healthsync.ai |
+| Jharda | CHC | jharda.chc@healthsync.ai |
+| Narwar | CHC | narwar.chc@healthsync.ai |
+| Tarana | CHC | tarana.chc@healthsync.ai |
+| Unhel | PHC | unhel.phc@healthsync.ai |
 
 > Log in as a centre to see the ground-level Staff Portal, or as the district admin to see the full Ujjain district dashboard, AI Insights panel, and requisition approvals.
 
@@ -50,7 +50,6 @@ SmartSehat AI connects ground-level health centres to district administrators th
 - Sachin Kumar — Team Lead
 - Ali Khan
 - Vanshika Gehi
-- Ansh Bhammarkar
 
 ## Event
 
