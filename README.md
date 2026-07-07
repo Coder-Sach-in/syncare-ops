@@ -3,7 +3,7 @@
 AI-driven health centre & supply chain management platform for Ujjain district's PHCs/CHCs — built for **Build with AI: Code for Communities — Indore Edition** (GDG Indore × Google Cloud), Track 3: Smart Health.
 
 ## Live App
-https://syncare-ops.lovable.app
+https://smartsehat-ai.vercel.app/
 
 ## Problem
 
