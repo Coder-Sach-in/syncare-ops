@@ -53,6 +53,7 @@ SmartSehat AI connects ground-level health centres to district administrators th
 - Sachin Kumar — Team Lead
 - Ali Khan
 - Vanshika Gehi
+- Ansh Bhammarkar
 
 ## Event
 
